@@ -18,22 +18,22 @@ export const isClientDemoMode = (): boolean => {
 // Demo data fixtures
 export const DEMO_CHANNEL = {
   _id: 'demo-channel-1',
-  channelId: 'UCdemo1234567890',
-  channelTitle: 'TechCreator Pro (Demo)',
-  channelDescription: 'Your go-to channel for tech tutorials, reviews, and coding tips.',
-  thumbnailUrl: 'https://ui-avatars.com/api/?name=TC&background=6366f1&color=fff&size=128',
-  subscriberCount: 125400,
-  videoCount: 87,
+  channelId: 'UC_7mX2qDemo9cR8fA',
+  channelTitle: 'DevFold Studio',
+  channelDescription: 'Practical web development for developers who want to ship better software—one clear tutorial at a time.',
+  thumbnailUrl: 'https://ui-avatars.com/api/?name=DevFold&background=7c3aed&color=ffffff&bold=true&size=128',
+  subscriberCount: 28400,
+  videoCount: 46,
   status: 'active' as const,
 }
 
 export const DEMO_VIDEOS = [
   {
     id: 'demo-video-1',
-    title: 'Building a REST API with Node.js and Express (2024)',
+    title: 'Build a REST API with Node.js and Express',
     description: 'Complete guide to building production-ready REST APIs.',
     thumbnailUrl: 'https://picsum.photos/seed/vid1/320/180',
-    publishedAt: '2024-12-15T10:00:00Z',
+    publishedAt: '2026-09-15T10:00:00Z',
     privacyStatus: 'public' as const,
     viewCount: 45200,
     likeCount: 1823,
@@ -42,10 +42,10 @@ export const DEMO_VIDEOS = [
   },
   {
     id: 'demo-video-2',
-    title: 'React 19 New Features Explained',
+    title: 'React 19 Features You Will Actually Use',
     description: 'Everything you need to know about React 19.',
     thumbnailUrl: 'https://picsum.photos/seed/vid2/320/180',
-    publishedAt: '2024-12-08T10:00:00Z',
+    publishedAt: '2026-09-08T10:00:00Z',
     privacyStatus: 'public' as const,
     viewCount: 38700,
     likeCount: 1456,
@@ -54,10 +54,10 @@ export const DEMO_VIDEOS = [
   },
   {
     id: 'demo-video-3',
-    title: 'TypeScript Generics Deep Dive',
+    title: 'TypeScript Generics, Finally Explained',
     description: 'Master TypeScript generics once and for all.',
     thumbnailUrl: 'https://picsum.photos/seed/vid3/320/180',
-    publishedAt: '2024-11-30T10:00:00Z',
+    publishedAt: '2026-08-30T10:00:00Z',
     privacyStatus: 'public' as const,
     viewCount: 29100,
     likeCount: 1102,

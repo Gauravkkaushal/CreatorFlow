@@ -404,6 +404,16 @@
   background: linear-gradient(120deg, rgb(11 16 32 / 0.58), rgb(14 20 38 / 0.36));
 }
 
+.dashboard-shell-content {
+  transition: margin-left 300ms ease;
+}
+
+@media (min-width: 768px) {
+  .creator-sidebar-collapsed .dashboard-shell-content {
+    margin-left: 76px !important;
+  }
+}
+
 .creator-workspace [class*="bg-[#151b2e]"],
 .creator-workspace [class*="bg-[#10162a]"] {
   background: rgb(21 28 48 / 0.8) !important;

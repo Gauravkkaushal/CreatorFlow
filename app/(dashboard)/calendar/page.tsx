@@ -24,6 +24,23 @@ function getFirstDayOfMonth(year: number, month: number) {
   return new Date(year, month, 1).getDay()
 }
 
+function startOfWeek(date: Date) {
+  const start = new Date(date)
+  start.setHours(0, 0, 0, 0)
+  start.setDate(start.getDate() - start.getDay())
+  return start
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date)
+  next.setDate(next.getDate() + days)
+  return next
+}
+
+function isSameDay(first: Date, second: Date) {
+  return first.getFullYear() === second.getFullYear() && first.getMonth() === second.getMonth() && first.getDate() === second.getDate()
+}
+
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December']
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -79,12 +96,14 @@ export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(9) // October
   const [today, setToday] = useState<Date | null>(null)
   const [events, setEvents] = useState<Event[]>(INITIAL_EVENTS)
+  const [weekAnchor, setWeekAnchor] = useState(new Date(2026, 9, 21))
 
   useEffect(() => {
     const now = new Date()
     setToday(now)
     setCurrentYear(now.getFullYear())
     setCurrentMonth(now.getMonth())
+    setWeekAnchor(now)
   }, [])
   const [view, setView] = useState<'month' | 'week'>('month')
   const [showModal, setShowModal] = useState(false)
@@ -97,6 +116,10 @@ export default function CalendarPage() {
 
   const daysInMonth = getDaysInMonth(currentYear, currentMonth)
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth)
+  const weekDays = Array.from({ length: 7 }, (_, index) => addDays(startOfWeek(weekAnchor), index))
+  const calendarCells: (Date | null)[] = view === 'month'
+    ? [...Array.from({ length: firstDay }, () => null), ...Array.from({ length: daysInMonth }, (_, index) => new Date(currentYear, currentMonth, index + 1))]
+    : weekDays
 
   const prevMonth = () => {
     if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1) }
@@ -108,21 +131,17 @@ export default function CalendarPage() {
     else setCurrentMonth(m => m + 1)
   }
 
-  const getEventsForDay = (day: number) => {
-    return events.filter((e) => {
-      const d = new Date(e.date)
-      return d.getFullYear() === currentYear && d.getMonth() === currentMonth && d.getDate() === day
-    })
+  const prevPeriod = () => {
+    if (view === 'week') setWeekAnchor((date) => addDays(date, -7))
+    else prevMonth()
   }
 
-  const handleDayClick = (day: number) => {
-    const d = new Date(currentYear, currentMonth, day)
-    setSelectedDate(d)
-    setSelectedEvent(null)
-    setShowModal(true)
-    setNewTitle('')
-    setNewType('video')
+  const nextPeriod = () => {
+    if (view === 'week') setWeekAnchor((date) => addDays(date, 7))
+    else nextMonth()
   }
+
+  const getEventsForDate = (date: Date) => events.filter((event) => isSameDay(new Date(event.date), date))
 
   const handleAddEvent = () => {
     if (!newTitle.trim() || !selectedDate) return
@@ -143,8 +162,10 @@ export default function CalendarPage() {
     setSelectedEvent(null)
   }
 
-  const isToday = (day: number) =>
-    today !== null && today.getFullYear() === currentYear && today.getMonth() === currentMonth && today.getDate() === day
+  const isToday = (date: Date) => today !== null && isSameDay(today, date)
+  const calendarLabel = view === 'week'
+    ? `${MONTHS[weekDays[0].getMonth()]} ${weekDays[0].getDate()} – ${MONTHS[weekDays[6].getMonth()]} ${weekDays[6].getDate()}, ${weekDays[6].getFullYear()}`
+    : `${MONTHS[currentMonth]} ${currentYear}`
 
   return (
     <div className="mx-auto max-w-7xl space-y-7 animate-fade-in">
@@ -163,7 +184,7 @@ export default function CalendarPage() {
             {(['month', 'week'] as const).map((v) => (
               <button
                 key={v}
-                onClick={() => setView(v)}
+                onClick={() => { setView(v); if (v === 'week') setWeekAnchor(today ?? new Date(currentYear, currentMonth, 1)) }}
                 className={`px-3 py-1.5 text-xs font-medium rounded-md capitalize transition-colors ${
                   view === v ? 'bg-violet-500 text-white shadow-lg shadow-violet-950/30' : 'text-slate-400 hover:text-white'
                 }`}
@@ -195,21 +216,21 @@ export default function CalendarPage() {
       <div className="overflow-hidden rounded-2xl border border-white/8 bg-[#151b2e] shadow-xl shadow-black/20">
         {/* Month nav */}
         <div className="flex items-center justify-between p-5 border-b border-white/8">
-          <button onClick={prevMonth} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+          <button onClick={prevPeriod} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
             <ChevronLeft className="w-5 h-5 text-slate-300" />
           </button>
           <div className="flex items-center gap-3">
             <h2 className="text-base font-semibold text-white">
-              {MONTHS[currentMonth]} {currentYear}
+              {calendarLabel}
             </h2>
             <button
-              onClick={() => { setCurrentYear(today?.getFullYear() ?? currentYear); setCurrentMonth(today?.getMonth() ?? currentMonth) }}
+              onClick={() => { const target = today ?? new Date(currentYear, currentMonth, 1); setCurrentYear(target.getFullYear()); setCurrentMonth(target.getMonth()); setWeekAnchor(target) }}
               className="text-xs text-violet-300 hover:text-white font-medium"
             >
               Today
             </button>
           </div>
-          <button onClick={nextMonth} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+          <button onClick={nextPeriod} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
             <ChevronRight className="w-5 h-5 text-slate-300" />
           </button>
         </div>
@@ -225,29 +246,23 @@ export default function CalendarPage() {
 
         {/* Calendar grid */}
         <div className="grid grid-cols-7">
-          {/* Empty cells before first day */}
-          {Array.from({ length: firstDay }).map((_, i) => (
-            <div key={`empty-${i}`} className="min-h-[116px] border-b border-r border-white/5 bg-black/10" />
-          ))}
-
-          {/* Day cells */}
-          {Array.from({ length: daysInMonth }).map((_, idx) => {
-            const day = idx + 1
-            const dayEvents = getEventsForDay(day)
-            const isTd = isToday(day)
+          {calendarCells.map((date, index) => {
+            if (!date) return <div key={`empty-${index}`} className="min-h-[116px] border-b border-r border-white/5 bg-black/10" />
+            const dayEvents = getEventsForDate(date)
+            const isTd = isToday(date)
 
             return (
               <div
-                key={day}
-                onClick={() => handleDayClick(day)}
-                className={`min-h-[116px] border-b border-r border-white/7 p-2.5 cursor-pointer hover:bg-white/[0.035] transition-colors ${
+                key={date.toISOString()}
+                onClick={() => { setSelectedDate(date); setSelectedEvent(null); setShowModal(true); setNewTitle(''); setNewType('video') }}
+                className={`min-h-[116px] border-b border-r border-white/7 p-2.5 cursor-pointer hover:bg-white/[0.035] transition-colors ${view === 'week' ? 'min-h-[420px]' : ''} ${
                   isTd ? 'bg-violet-500/10' : ''
                 }`}
               >
                 <div className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-semibold mb-1 ${
                   isTd ? 'bg-violet-500 text-white shadow-lg shadow-violet-950/40' : 'text-slate-300 hover:bg-white/10'
                 }`}>
-                  {day}
+                  {date.getDate()}
                 </div>
                 <div className="space-y-0.5">
                   {dayEvents.slice(0, 2).map((ev) => {

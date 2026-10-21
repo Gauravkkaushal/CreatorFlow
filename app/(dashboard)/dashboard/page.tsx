@@ -8,6 +8,7 @@ import {
   Play,
   Radio,
   Sparkles,
+  Plus,
   WandSparkles,
 } from 'lucide-react'
 import { DEMO_BROADCASTS, DEMO_CONTENT_IDEAS, DEMO_TOPICS } from '@/lib/demo-mode'
@@ -35,39 +36,40 @@ export default function DashboardPage() {
           <h1 className="mt-1 text-3xl font-bold tracking-tight text-white md:text-4xl">Your next great video starts here.</h1>
           <p className="mt-2 text-sm text-slate-400">Turn what your viewers are saying into videos they will actually watch.</p>
         </div>
-        <Link href="/content-planner" className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-red-950/30 transition hover:bg-red-400">
-          <WandSparkles className="h-4 w-4" /> Create a video
+        <Link href="/content-planner" className="group inline-flex items-center justify-center gap-2 rounded-xl border border-violet-400/30 bg-violet-500 px-3 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-950/25 transition hover:bg-violet-400">
+          <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/15 transition group-hover:bg-white/20"><Plus className="h-4 w-4" /></span>
+          Create video
         </Link>
       </header>
 
-      <section className="relative overflow-hidden rounded-3xl border border-violet-400/20 bg-gradient-to-br from-violet-600 via-indigo-700 to-slate-950 p-6 shadow-2xl shadow-indigo-950/40 md:p-8">
-        <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-fuchsia-400/20 blur-3xl" />
+      <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#151b2e] p-6 shadow-xl shadow-black/15 md:p-8">
+        <div className="absolute -right-24 -top-28 h-72 w-72 rounded-full bg-violet-500/12 blur-3xl" />
         <div className="relative grid gap-8 lg:grid-cols-[1.2fr_.8fr] lg:items-center">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium text-indigo-100">
-              <Sparkles className="h-3.5 w-3.5" /> Strongest audience opportunity
+            <div className="inline-flex items-center gap-2 rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1 text-xs font-semibold text-violet-200">
+              <Sparkles className="h-3.5 w-3.5" /> Best opportunity this week
             </div>
-            <h2 className="mt-5 max-w-xl text-2xl font-bold tracking-tight text-white md:text-3xl">Your viewers want a video about {opportunity.name}.</h2>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-indigo-100/80">{opportunity.summary}</p>
+            <h2 className="mt-5 max-w-xl text-2xl font-bold tracking-tight text-white md:text-3xl">Make the video your viewers are already looking for.</h2>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">{opportunity.summary}</p>
             <div className="mt-5 flex flex-wrap gap-2 text-xs">
-              <span className="rounded-full bg-white/15 px-3 py-1.5 font-medium text-white">{opportunity.commentCount} viewer requests</span>
-              <span className="rounded-full bg-white/15 px-3 py-1.5 font-medium text-white">Demand score {opportunity.priorityScore}/100</span>
+              <span className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 font-medium text-slate-200">{opportunity.commentCount} viewer requests</span>
+              <span className="rounded-full border border-emerald-300/15 bg-emerald-400/10 px-3 py-1.5 font-medium text-emerald-200">Demand score {opportunity.priorityScore}/100</span>
             </div>
             <div className="mt-7 flex flex-wrap gap-3">
-              <Link href={`/content-planner?topic=${encodeURIComponent(opportunity.name)}`} className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-indigo-950 transition hover:bg-indigo-50">
-                Turn into a video <ArrowRight className="h-4 w-4" />
+              <Link href={`/content-planner?topic=${encodeURIComponent(opportunity.name)}`} className="inline-flex items-center gap-2 rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-400">
+                <WandSparkles className="h-4 w-4" /> Create this video <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link href="/audience" className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/10">
+              <Link href="/audience" className="inline-flex items-center gap-2 rounded-xl border border-white/12 px-4 py-2.5 text-sm font-medium text-slate-200 transition hover:bg-white/[0.06]">
                 See all feedback
               </Link>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-5 backdrop-blur-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-indigo-200">What viewers are saying</p>
+          <div className="rounded-2xl border border-white/10 bg-black/15 p-5 backdrop-blur-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-violet-200">Viewer signal</p>
             <blockquote className="mt-4 text-base leading-7 text-white">“{opportunity.representativeComments[0]}”</blockquote>
             <div className="mt-5 border-t border-white/10 pt-4">
-              <p className="text-xs text-indigo-200">Most asked question</p>
+              <p className="text-xs text-slate-400">Most asked question</p>
               <p className="mt-1 text-sm font-medium text-white">{opportunity.commonQuestions[0]}</p>
             </div>
           </div>

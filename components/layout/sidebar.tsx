@@ -34,8 +34,7 @@ const navItems = [
   { href: '/video-management', label: 'Video Library', icon: Video },
 ]
 
-export function DashboardSidebar() {
-  const [collapsed, setCollapsed] = useState(false)
+export function DashboardSidebar({ collapsed, onCollapsedChange }: { collapsed: boolean; onCollapsedChange: (collapsed: boolean) => void }) {
   const pathname = usePathname()
 
   return (
@@ -45,9 +44,9 @@ export function DashboardSidebar() {
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-violet-500 shadow-lg shadow-violet-950/50"><Zap className="h-4 w-4 text-white" /></div>
           {!collapsed && <span className="truncate font-[Outfit] text-base font-bold tracking-tight text-white">CreatorFlow</span>}
         </Link>
-        {!collapsed && <button onClick={() => setCollapsed(true)} className="ml-auto rounded-lg p-1.5 text-slate-500 transition hover:bg-white/5 hover:text-white" aria-label="Collapse sidebar"><ChevronLeft className="h-4 w-4" /></button>}
+        {!collapsed && <button onClick={() => onCollapsedChange(true)} className="ml-auto rounded-lg p-1.5 text-slate-500 transition hover:bg-white/5 hover:text-white" aria-label="Collapse sidebar"><ChevronLeft className="h-4 w-4" /></button>}
       </div>
-      {collapsed && <button onClick={() => setCollapsed(false)} className="mx-auto mt-3 rounded-lg p-2 text-slate-500 transition hover:bg-white/5 hover:text-white" aria-label="Expand sidebar"><ChevronRight className="h-4 w-4" /></button>}
+      {collapsed && <button onClick={() => onCollapsedChange(false)} className="absolute -right-3 top-6 z-50 flex h-7 w-7 items-center justify-center rounded-full border border-white/15 bg-[#171e34] text-slate-300 shadow-lg shadow-black/30 transition hover:bg-violet-500 hover:text-white" aria-label="Expand sidebar"><ChevronRight className="h-4 w-4" /></button>}
 
       {!collapsed && <div className="mx-3 mt-5 rounded-xl border border-white/8 bg-white/[0.035] p-3"><div className="flex items-center gap-2"><span className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-red-500/15 text-red-300"><Clapperboard className="h-4 w-4" /><i className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border-2 border-[#0b1020] bg-emerald-400" /></span><div className="min-w-0"><p className="truncate text-xs font-semibold text-slate-100">Your channel</p><p className="mt-0.5 text-[11px] text-slate-500">Connected to YouTube</p></div></div></div>}
 
