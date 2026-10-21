@@ -1,0 +1,406 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  X,
+  Radio,
+  Video,
+  Zap,
+  Calendar,
+  Info,
+} from 'lucide-react'
+import { DEMO_CONTENT_IDEAS } from '@/lib/demo-mode'
+import { formatDate } from '@/lib/utils'
+
+// ─── Calendar helpers ───────────────────────────────────────────────────────
+function getDaysInMonth(year: number, month: number) {
+  return new Date(year, month + 1, 0).getDate()
+}
+
+function getFirstDayOfMonth(year: number, month: number) {
+  return new Date(year, month, 1).getDay()
+}
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December']
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+type EventType = 'video' | 'livestream' | 'short'
+
+interface Event {
+  id: string
+  title: string
+  date: Date
+  type: EventType
+  status: 'scheduled' | 'published'
+  color: string
+}
+
+// ─── Event data (absolute hardcoded dates — no runtime Date.now() calls) ──────
+const INITIAL_EVENTS: Event[] = [
+  {
+    id: 'ev-1',
+    title: 'JWT Auth Guide',
+    date: new Date('2026-10-20T00:00:00'),
+    type: 'video',
+    status: 'scheduled',
+    color: '#6366f1',
+  },
+  {
+    id: 'ev-2',
+    title: 'Live Q&A Stream',
+    date: new Date('2026-10-26T00:00:00'),
+    type: 'livestream',
+    status: 'scheduled',
+    color: '#3b82f6',
+  },
+  {
+    id: 'ev-3',
+    title: 'RSC Quick Take',
+    date: new Date('2026-10-15T00:00:00'),
+    type: 'short',
+    status: 'published',
+    color: '#8b5cf6',
+  },
+]
+
+const TYPE_CONFIG = {
+  video: { icon: Video, color: '#6366f1', label: 'Video', bg: 'bg-indigo-100 text-indigo-700' },
+  livestream: { icon: Radio, color: '#3b82f6', label: 'Live Stream', bg: 'bg-blue-100 text-blue-700' },
+  short: { icon: Zap, color: '#8b5cf6', label: 'Short', bg: 'bg-violet-100 text-violet-700' },
+}
+
+export default function CalendarPage() {
+  // Static defaults — overridden client-side in useEffect to avoid prerender errors
+  const [currentYear, setCurrentYear] = useState(2026)
+  const [currentMonth, setCurrentMonth] = useState(9) // October
+  const [today, setToday] = useState<Date | null>(null)
+  const [events, setEvents] = useState<Event[]>(INITIAL_EVENTS)
+
+  useEffect(() => {
+    const now = new Date()
+    setToday(now)
+    setCurrentYear(now.getFullYear())
+    setCurrentMonth(now.getMonth())
+  }, [])
+  const [view, setView] = useState<'month' | 'week'>('month')
+  const [showModal, setShowModal] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
+
+  // New event form
+  const [newTitle, setNewTitle] = useState('')
+  const [newType, setNewType] = useState<EventType>('video')
+
+  const daysInMonth = getDaysInMonth(currentYear, currentMonth)
+  const firstDay = getFirstDayOfMonth(currentYear, currentMonth)
+
+  const prevMonth = () => {
+    if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1) }
+    else setCurrentMonth(m => m - 1)
+  }
+
+  const nextMonth = () => {
+    if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(y => y + 1) }
+    else setCurrentMonth(m => m + 1)
+  }
+
+  const getEventsForDay = (day: number) => {
+    return events.filter((e) => {
+      const d = new Date(e.date)
+      return d.getFullYear() === currentYear && d.getMonth() === currentMonth && d.getDate() === day
+    })
+  }
+
+  const handleDayClick = (day: number) => {
+    const d = new Date(currentYear, currentMonth, day)
+    setSelectedDate(d)
+    setSelectedEvent(null)
+    setShowModal(true)
+    setNewTitle('')
+    setNewType('video')
+  }
+
+  const handleAddEvent = () => {
+    if (!newTitle.trim() || !selectedDate) return
+    const newEvent: Event = {
+      id: `ev-${Date.now()}`,
+      title: newTitle,
+      date: selectedDate,
+      type: newType,
+      status: 'scheduled' as const,
+      color: TYPE_CONFIG[newType].color,
+    }
+    setEvents((prev) => [...prev, newEvent])
+    setShowModal(false)
+  }
+
+  const handleRemoveEvent = (id: string) => {
+    setEvents((prev) => prev.filter((e) => e.id !== id))
+    setSelectedEvent(null)
+  }
+
+  const isToday = (day: number) =>
+    today !== null && today.getFullYear() === currentYear && today.getMonth() === currentMonth && today.getDate() === day
+
+  return (
+    <div className="mx-auto max-w-7xl space-y-7 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-violet-300">Publishing calendar</p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-white">Plan a week your audience can count on.</h1>
+          <p className="text-sm text-slate-400 mt-2">Schedule videos, Shorts, and live sessions without losing sight of your workload.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs font-medium text-amber-800">
+            <Info className="w-3.5 h-3.5" /> Demo Mode
+          </span>
+          <div className="flex rounded-xl border border-white/8 bg-white/[0.04] p-1">
+            {(['month', 'week'] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md capitalize transition-colors ${
+                  view === v ? 'bg-violet-500 text-white shadow-lg shadow-violet-950/30' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => { setSelectedDate(today); setShowModal(true); setNewTitle(''); setNewType('video'); setSelectedEvent(null) }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Schedule
+          </button>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 rounded-2xl border border-white/8 bg-[#151b2e] px-5 py-3">
+        {Object.entries(TYPE_CONFIG).map(([type, cfg]) => (
+          <div key={type} className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full" style={{ background: cfg.color }} />
+            <span className="text-xs text-slate-300">{cfg.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Calendar */}
+      <div className="overflow-hidden rounded-2xl border border-white/8 bg-[#151b2e] shadow-xl shadow-black/20">
+        {/* Month nav */}
+        <div className="flex items-center justify-between p-5 border-b border-white/8">
+          <button onClick={prevMonth} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+            <ChevronLeft className="w-5 h-5 text-slate-300" />
+          </button>
+          <div className="flex items-center gap-3">
+            <h2 className="text-base font-semibold text-white">
+              {MONTHS[currentMonth]} {currentYear}
+            </h2>
+            <button
+              onClick={() => { setCurrentYear(today?.getFullYear() ?? currentYear); setCurrentMonth(today?.getMonth() ?? currentMonth) }}
+              className="text-xs text-violet-300 hover:text-white font-medium"
+            >
+              Today
+            </button>
+          </div>
+          <button onClick={nextMonth} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+            <ChevronRight className="w-5 h-5 text-slate-300" />
+          </button>
+        </div>
+
+        {/* Day headers */}
+        <div className="grid grid-cols-7 border-b border-white/8 bg-[#10162a]">
+          {DAYS.map((d) => (
+            <div key={d} className="py-3 text-center text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+              {d}
+            </div>
+          ))}
+        </div>
+
+        {/* Calendar grid */}
+        <div className="grid grid-cols-7">
+          {/* Empty cells before first day */}
+          {Array.from({ length: firstDay }).map((_, i) => (
+            <div key={`empty-${i}`} className="min-h-[116px] border-b border-r border-white/5 bg-black/10" />
+          ))}
+
+          {/* Day cells */}
+          {Array.from({ length: daysInMonth }).map((_, idx) => {
+            const day = idx + 1
+            const dayEvents = getEventsForDay(day)
+            const isTd = isToday(day)
+
+            return (
+              <div
+                key={day}
+                onClick={() => handleDayClick(day)}
+                className={`min-h-[116px] border-b border-r border-white/7 p-2.5 cursor-pointer hover:bg-white/[0.035] transition-colors ${
+                  isTd ? 'bg-violet-500/10' : ''
+                }`}
+              >
+                <div className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-semibold mb-1 ${
+                  isTd ? 'bg-violet-500 text-white shadow-lg shadow-violet-950/40' : 'text-slate-300 hover:bg-white/10'
+                }`}>
+                  {day}
+                </div>
+                <div className="space-y-0.5">
+                  {dayEvents.slice(0, 2).map((ev) => {
+                    const cfg = TYPE_CONFIG[ev.type]
+                    return (
+                      <div
+                        key={ev.id}
+                        onClick={(e) => { e.stopPropagation(); setSelectedEvent(ev); setShowModal(false) }}
+                        className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium truncate cursor-pointer hover:opacity-80"
+                        style={{ backgroundColor: cfg.color + '20', color: cfg.color }}
+                      >
+                        <cfg.icon className="w-2.5 h-2.5 shrink-0" />
+                        <span className="truncate">{ev.title}</span>
+                      </div>
+                    )
+                  })}
+                  {dayEvents.length > 2 && (
+                    <div className="text-[10px] text-slate-500 pl-1">+{dayEvents.length - 2} more</div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Event detail side panel */}
+      {selectedEvent && (
+        <div className="fixed inset-y-0 right-0 w-80 bg-[#151b2e] shadow-2xl shadow-black/50 border-l border-white/8 z-40 flex flex-col animate-slide-in-right">
+          <div className="flex items-center justify-between p-5 border-b border-white/8">
+            <h3 className="text-base font-semibold text-white">Event Details</h3>
+            <button onClick={() => setSelectedEvent(null)} className="text-slate-400 hover:text-slate-600">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="p-5 flex-1 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: selectedEvent.color + '20' }}>
+                {(() => {
+                  const cfg = TYPE_CONFIG[selectedEvent.type]
+                  return <cfg.icon className="w-5 h-5" style={{ color: selectedEvent.color }} />
+                })()}
+              </div>
+              <div>
+                <h4 className="font-semibold text-white">{selectedEvent.title}</h4>
+                <span className={`badge text-xs ${TYPE_CONFIG[selectedEvent.type].bg}`}>
+                  {TYPE_CONFIG[selectedEvent.type].label}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-slate-300">
+              <Calendar className="w-4 h-4 text-slate-400" />
+              {formatDate(selectedEvent.date)}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`badge ${
+                selectedEvent.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-indigo-100 text-indigo-700'
+              }`}>
+                {selectedEvent.status}
+              </span>
+            </div>
+          </div>
+          <div className="p-5 border-t border-white/8 space-y-2">
+            <button
+              onClick={() => handleRemoveEvent(selectedEvent.id)}
+              className="w-full px-4 py-2 border border-red-200 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition-colors"
+            >
+              Remove Event
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Add Event Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
+          <div className="bg-[#151b2e] border border-white/10 rounded-2xl shadow-2xl shadow-black/50 w-full max-w-md animate-slide-up">
+            <div className="flex items-center justify-between p-5 border-b border-white/8">
+              <h2 className="text-base font-semibold text-white">Schedule Content</h2>
+              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Date</label>
+                <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+                  <Calendar className="w-4 h-4 text-slate-400" />
+                  <span className="text-sm text-slate-700">{selectedDate ? formatDate(selectedDate) : '—'}</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Title *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. JWT Authentication Tutorial"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Content Type</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(Object.entries(TYPE_CONFIG) as [EventType, typeof TYPE_CONFIG['video']][]).map(([type, cfg]) => (
+                    <button
+                      key={type}
+                      onClick={() => setNewType(type)}
+                      className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
+                        newType === type ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <cfg.icon className={`w-5 h-5 ${newType === type ? 'text-indigo-600' : 'text-slate-400'}`} />
+                      <span className={`text-xs font-medium ${newType === type ? 'text-indigo-700' : 'text-slate-500'}`}>
+                        {cfg.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Quick add from ideas */}
+              {DEMO_CONTENT_IDEAS.length > 0 && (
+                <div>
+                  <p className="text-xs text-slate-500 mb-1.5">Or pick from your ideas:</p>
+                  <div className="space-y-1 max-h-24 overflow-y-auto">
+                    {DEMO_CONTENT_IDEAS.map((idea) => (
+                      <button
+                        key={idea._id}
+                        onClick={() => { setNewTitle(idea.title); setNewType(idea.contentType) }}
+                        className="w-full text-left px-2.5 py-1.5 text-xs text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg transition-colors truncate"
+                      >
+                        {idea.title}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3 p-5 border-t border-white/8">
+              <button onClick={() => setShowModal(false)} className="flex-1 px-4 py-2.5 border border-slate-200 text-sm text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={handleAddEvent}
+                disabled={!newTitle.trim()}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" /> Add to Calendar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
