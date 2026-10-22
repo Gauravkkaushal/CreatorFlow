@@ -8,11 +8,11 @@ import {
   Play,
   Radio,
   Sparkles,
-  Plus,
   WandSparkles,
 } from 'lucide-react'
 import { DEMO_BROADCASTS, DEMO_CONTENT_IDEAS, DEMO_TOPICS } from '@/lib/demo-mode'
 import { formatDate } from '@/lib/utils'
+import { LiveAnalysisDemo } from '@/components/dashboard/live-analysis-demo'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = { title: 'Home' }
@@ -36,10 +36,7 @@ export default function DashboardPage() {
           <h1 className="mt-1 text-3xl font-bold tracking-tight text-white md:text-4xl">Your next great video starts here.</h1>
           <p className="mt-2 text-sm text-slate-400">Turn what your viewers are saying into videos they will actually watch.</p>
         </div>
-        <Link href="/content-planner" className="group inline-flex items-center justify-center gap-2 rounded-xl border border-violet-400/30 bg-violet-500 px-3 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-950/25 transition hover:bg-violet-400">
-          <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/15 transition group-hover:bg-white/20"><Plus className="h-4 w-4" /></span>
-          Create video
-        </Link>
+        <LiveAnalysisDemo />
       </header>
 
       <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#151b2e] p-6 shadow-xl shadow-black/15 md:p-8">

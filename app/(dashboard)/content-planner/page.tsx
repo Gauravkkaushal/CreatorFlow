@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   ArrowRight,
   CalendarDays,
@@ -63,6 +64,14 @@ export default function ContentPlannerPage() {
   const [topic, setTopic] = useState('')
   const [generating, setGenerating] = useState(false)
   const [draggedProjectId, setDraggedProjectId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const suggestedTopic = new URLSearchParams(window.location.search).get('topic')
+    if (!suggestedTopic) return
+
+    setTopic(suggestedTopic)
+    setShowGenerator(true)
+  }, [])
 
   const moveProject = (id: string, direction: -1 | 1) => {
     setProjects((current) => current.map((project) => {
@@ -170,7 +179,28 @@ export default function ContentPlannerPage() {
         <LinkCard icon={FileText} title="Prepare your script" text="Use AI to create a first draft you can make your own." href="/stream-studio" />
       </section>
 
-      {showGenerator && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm" onClick={(event) => event.target === event.currentTarget && setShowGenerator(false)}><div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#151b2e] shadow-2xl shadow-black/50 animate-slide-up"><div className="flex items-center justify-between border-b border-white/8 p-5"><div><p className="text-sm font-semibold text-white">Create a new video idea</p><p className="mt-1 text-xs text-slate-400">Start with an audience request or any topic you want to own.</p></div><button onClick={() => setShowGenerator(false)} className="rounded-lg p-1.5 text-slate-500 hover:bg-white/5 hover:text-white"><X className="h-5 w-5" /></button></div><div className="space-y-5 p-5"><div><label className="text-xs font-semibold text-slate-300">What should this video be about?</label><input autoFocus value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="e.g. JWT authentication for beginners" className="mt-2 w-full rounded-xl border border-white/10 bg-[#0b1020] px-3 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-violet-400/60 focus:ring-2 focus:ring-violet-400/15" /></div><div><p className="text-xs font-semibold text-slate-300">Audience signals</p><div className="mt-2 flex flex-wrap gap-2">{DEMO_TOPICS.map((audienceTopic) => <button key={audienceTopic._id} onClick={() => setTopic(audienceTopic.name)} className={'rounded-lg border px-2.5 py-1.5 text-[11px] transition ' + (topic === audienceTopic.name ? 'border-violet-400 bg-violet-500/20 text-white' : 'border-white/10 bg-white/[0.03] text-slate-400 hover:text-white')}>{audienceTopic.name}</button>)}</div></div></div><div className="flex gap-3 border-t border-white/8 p-5"><button onClick={() => setShowGenerator(false)} className="flex-1 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-300 transition hover:bg-white/5">Cancel</button><button onClick={createProject} disabled={!topic.trim() || generating} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-400 disabled:opacity-50">{generating ? 'Creating…' : <><Sparkles className="h-4 w-4" /> Create project</>}</button></div></div></div>}
+      {showGenerator && createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm"
+          onClick={(event) => event.target === event.currentTarget && setShowGenerator(false)}
+        >
+          <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#151b2e] shadow-2xl shadow-black/50 animate-slide-up">
+            <div className="flex items-center justify-between border-b border-white/8 p-5">
+              <div><p className="text-sm font-semibold text-white">Create a new video idea</p><p className="mt-1 text-xs text-slate-400">Start with an audience request or any topic you want to own.</p></div>
+              <button onClick={() => setShowGenerator(false)} className="rounded-lg p-1.5 text-slate-500 hover:bg-white/5 hover:text-white"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-5 p-5">
+              <div><label className="text-xs font-semibold text-slate-300">What should this video be about?</label><input autoFocus value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="e.g. JWT authentication for beginners" className="mt-2 w-full rounded-xl border border-white/10 bg-[#0b1020] px-3 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-violet-400/60 focus:ring-2 focus:ring-violet-400/15" /></div>
+              <div><p className="text-xs font-semibold text-slate-300">Audience signals</p><div className="mt-2 flex flex-wrap gap-2">{DEMO_TOPICS.map((audienceTopic) => <button key={audienceTopic._id} onClick={() => setTopic(audienceTopic.name)} className={'rounded-lg border px-2.5 py-1.5 text-[11px] transition ' + (topic === audienceTopic.name ? 'border-violet-400 bg-violet-500/20 text-white' : 'border-white/10 bg-white/[0.03] text-slate-400 hover:text-white')}>{audienceTopic.name}</button>)}</div></div>
+            </div>
+            <div className="flex gap-3 border-t border-white/8 p-5">
+              <button onClick={() => setShowGenerator(false)} className="flex-1 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-300 transition hover:bg-white/5">Cancel</button>
+              <button onClick={createProject} disabled={!topic.trim() || generating} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-400 disabled:opacity-50">{generating ? 'Creating…' : <><Sparkles className="h-4 w-4" /> Create project</>}</button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
 
       {selectedProject && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm" onClick={(event) => event.target === event.currentTarget && setSelectedProject(null)}><div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-white/10 bg-[#151b2e] shadow-2xl shadow-black/50 animate-slide-up"><div className="flex items-start justify-between border-b border-white/8 p-5"><div><span className="rounded-md bg-violet-500/15 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-violet-200">{stages[selectedProject.status].title}</span><h2 className="mt-3 text-lg font-semibold text-white">{selectedProject.title}</h2></div><button onClick={() => setSelectedProject(null)} className="rounded-lg p-1.5 text-slate-500 hover:bg-white/5 hover:text-white"><X className="h-5 w-5" /></button></div><div className="overflow-y-auto p-5"><p className="text-sm leading-6 text-slate-300">{selectedProject.description}</p><div className="mt-6 grid gap-3 sm:grid-cols-2"><div className="rounded-xl border border-white/8 bg-[#0b1020] p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Audience demand</p><p className="mt-2 text-2xl font-bold text-white">{selectedProject.demand}<span className="text-sm text-slate-500">/100</span></p></div><div className="rounded-xl border border-white/8 bg-[#0b1020] p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Next step</p><p className="mt-2 text-sm font-semibold text-slate-200">{stages[selectedProject.status].description}</p></div></div><h3 className="mt-6 text-sm font-semibold text-white">Video outline</h3><ol className="mt-3 space-y-2">{(selectedProject.outline || []).map((step, index) => <li key={step} className="flex gap-3 text-sm text-slate-300"><span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-[10px] font-bold text-violet-200">{index + 1}</span>{step}</li>)}</ol></div><div className="flex gap-3 border-t border-white/8 p-5"><button onClick={() => setSelectedProject(null)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-300 transition hover:bg-white/5">Close</button><button onClick={() => moveProject(selectedProject._id, 1)} disabled={selectedProject.status === 'published'} className="ml-auto inline-flex items-center gap-2 rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-400 disabled:opacity-40">Move forward <ArrowRight className="h-4 w-4" /></button></div></div></div>}
     </div>

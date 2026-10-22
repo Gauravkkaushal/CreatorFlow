@@ -24,6 +24,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
+import { DEMO_CHANNEL } from '@/lib/demo-mode'
 
 const navItems = [
   { href: '/dashboard', label: 'Home', icon: Compass },
@@ -48,7 +49,7 @@ export function DashboardSidebar({ collapsed, onCollapsedChange }: { collapsed: 
       </div>
       {collapsed && <button onClick={() => onCollapsedChange(false)} className="absolute -right-3 top-6 z-50 flex h-7 w-7 items-center justify-center rounded-full border border-white/15 bg-[#171e34] text-slate-300 shadow-lg shadow-black/30 transition hover:bg-violet-500 hover:text-white" aria-label="Expand sidebar"><ChevronRight className="h-4 w-4" /></button>}
 
-      {!collapsed && <div className="mx-3 mt-5 rounded-xl border border-white/8 bg-white/[0.035] p-3"><div className="flex items-center gap-2"><span className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-red-500/15 text-red-300"><Clapperboard className="h-4 w-4" /><i className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border-2 border-[#0b1020] bg-emerald-400" /></span><div className="min-w-0"><p className="truncate text-xs font-semibold text-slate-100">Your channel</p><p className="mt-0.5 text-[11px] text-slate-500">Connected to YouTube</p></div></div></div>}
+      {!collapsed && <div className="mx-3 mt-5 rounded-xl border border-white/8 bg-white/[0.035] p-3"><div className="flex items-center gap-2"><span className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-red-500/15 text-red-300"><Clapperboard className="h-4 w-4" /><i className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border-2 border-[#0b1020] bg-emerald-400" /></span><div className="min-w-0"><p className="truncate text-xs font-semibold text-slate-100">{DEMO_CHANNEL.channelTitle}</p><p className="mt-0.5 text-[11px] text-slate-500">Connected to YouTube</p></div></div></div>}
 
       <nav className="flex-1 space-y-1 px-3 py-6">
         {!collapsed && <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600">Workspace</p>}
