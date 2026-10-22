@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import { isDemoMode } from '@/lib/demo-mode'
 import { generateVideoOutline, generateVideoDescription } from '@/services/ai'
 import type { ApiResponse } from '@/types'
 
@@ -14,15 +15,20 @@ interface GenerateScriptResult {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth()
-    if (!session?.user) {
+    // Demo mode is intentionally usable without a Google sign-in so visitors
+    // can try the writing workflow. Live mode still requires an account.
+    if (!session?.user && !isDemoMode()) {
       return NextResponse.json<ApiResponse>({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await request.json()
-    const { title, topic, keywords } = body
+    const { title, topic, keywords, language = 'english' } = body
 
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
       return NextResponse.json<ApiResponse>({ success: false, error: 'title is required' }, { status: 400 })
+    }
+    if (language !== 'english' && language !== 'hinglish') {
+      return NextResponse.json<ApiResponse>({ success: false, error: 'language must be english or hinglish' }, { status: 400 })
     }
 
     const topicObj = topic ?? {
@@ -38,14 +44,15 @@ export async function POST(request: NextRequest) {
     }
 
     const [outline, description] = await Promise.all([
-      generateVideoOutline(title.trim(), topicObj),
-      generateVideoDescription(title.trim(), [], keywords ?? []),
+      generateVideoOutline(title.trim(), topicObj, language),
+      generateVideoDescription(title.trim(), [], keywords ?? [], language),
     ])
 
     const hook = outline[0] ?? `In this video, we'll cover everything about ${title}.`
-    const cta = 'If you found this helpful, smash the like button and subscribe for more content! Drop your questions in the comments below. 🔔'
-
-    const result: GenerateScriptResult = { outline, description, hook, cta }
+    const localizedCta = language === 'hinglish'
+      ? 'Video helpful lagi ho to like karein aur aise hi content ke liye subscribe zaroor karein. Apne questions comments mein drop kijiye!'
+      : 'If you found this helpful, smash the like button and subscribe for more content! Drop your questions in the comments below.'
+    const result: GenerateScriptResult = { outline, description, hook, cta: localizedCta }
 
     return NextResponse.json<ApiResponse<GenerateScriptResult>>({
       success: true,

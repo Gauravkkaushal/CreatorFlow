@@ -31,8 +31,8 @@ export interface AIComment {
 export interface AIProvider {
   analyzeComments(comments: AIComment[], videoTitle: string): Promise<AnalysisOutput>
   generateContentIdeas(topic: AudienceTopicOutput, channelContext?: string): Promise<ContentIdeaAIOutput[]>
-  generateVideoOutline(title: string, topic: AudienceTopicOutput): Promise<string[]>
-  generateVideoDescription(title: string, outline: string[], keywords: string[]): Promise<string>
+  generateVideoOutline(title: string, topic: AudienceTopicOutput, language?: 'english' | 'hinglish'): Promise<string[]>
+  generateVideoDescription(title: string, outline: string[], keywords: string[], language?: 'english' | 'hinglish'): Promise<string>
   generateLivestreamAgenda(topic: AudienceTopicOutput, duration: number): Promise<LivestreamAgendaOutput>
   suggestCommentReplies(comment: string, channelContext?: string): Promise<string[]>
 }
@@ -254,11 +254,12 @@ Output JSON only.`
     return validated.data.ideas
   }
 
-  async generateVideoOutline(title: string, topic: AudienceTopicOutput): Promise<string[]> {
+  async generateVideoOutline(title: string, topic: AudienceTopicOutput, language: 'english' | 'hinglish' = 'english'): Promise<string[]> {
     const prompt = `Generate a detailed YouTube video outline for: "${sanitizeComment(title)}"
 
 Audience is interested in: ${topic.name}
 Their questions: ${topic.commonQuestions.slice(0, 3).join('; ')}
+Writing language: ${language === 'hinglish' ? 'Hinglish (natural Hindi written in Roman script, mixed with English)' : 'English'}
 
 Return JSON array of outline points (8-15 items):
 ["Introduction: Hook and what viewers will learn", "Section 1: ...", ..., "Conclusion: ..."]
@@ -274,12 +275,14 @@ Output JSON array only.`
   async generateVideoDescription(
     title: string,
     outline: string[],
-    keywords: string[]
+    keywords: string[],
+    language: 'english' | 'hinglish' = 'english'
   ): Promise<string> {
     const prompt = `Write a YouTube video description for: "${sanitizeComment(title)}"
 
 Outline: ${outline.join(' | ')}
 Keywords to include naturally: ${keywords.join(', ')}
+Writing language: ${language === 'hinglish' ? 'Hinglish (natural Hindi written in Roman script, mixed with English)' : 'English'}
 
 Requirements:
 - 200-400 words
@@ -396,9 +399,9 @@ class DemoAdapter implements AIProvider {
     ]
   }
 
-  async generateVideoOutline(title: string): Promise<string[]> {
+  async generateVideoOutline(title: string, _topic?: AudienceTopicOutput, language: 'english' | 'hinglish' = 'english'): Promise<string[]> {
     await new Promise((r) => setTimeout(r, 500))
-    return [
+    const outline = [
       `Introduction: What is ${title}?`,
       'Prerequisites and setup',
       'Core concepts and theory',
@@ -409,11 +412,14 @@ class DemoAdapter implements AIProvider {
       'Performance considerations',
       'Summary and next steps',
     ]
+    return language === 'hinglish' ? outline.map((item) => item.replace('Introduction', 'Introduction: Aaj hum dekhenge').replace('Conclusion', 'Conclusion: Quick recap aur next steps')) : outline
   }
 
-  async generateVideoDescription(title: string): Promise<string> {
+  async generateVideoDescription(title: string, _outline?: string[], _keywords?: string[], language: 'english' | 'hinglish' = 'english'): Promise<string> {
     await new Promise((r) => setTimeout(r, 500))
-    return `In this video, I cover everything about ${title}. Whether you're a beginner or experienced developer, this guide will help you understand the core concepts and implement them in your own projects.\n\n📌 What you'll learn:\n- Core concepts\n- Practical implementation\n- Best practices\n\n🔔 Subscribe for more content like this!\n\n#webdev #programming #tutorial`
+    return language === 'hinglish'
+      ? `Is video mein hum ${title} ko step by step cover karenge. Chahe aap beginner ho ya already experience rakhte ho, aapko practical implementation aur best practices dono milengi.\n\nAap kya seekhenge:\n- Core concepts\n- Practical implementation\n- Common mistakes se bachne ke tips\n\nAise hi useful videos ke liye subscribe zaroor karein!`
+      : `In this video, I cover everything about ${title}. Whether you're a beginner or experienced developer, this guide will help you understand the core concepts and implement them in your own projects.\n\nWhat you'll learn:\n- Core concepts\n- Practical implementation\n- Best practices\n\nSubscribe for more content like this!`
   }
 
   async generateLivestreamAgenda(topic: AudienceTopicOutput, duration: number): Promise<LivestreamAgendaOutput> {
@@ -470,11 +476,11 @@ export const analyzeComments = (comments: AIComment[], videoTitle: string) =>
 export const generateContentIdeas = (topic: AudienceTopicOutput, channelContext?: string) =>
   getAIProvider().generateContentIdeas(topic, channelContext)
 
-export const generateVideoOutline = (title: string, topic: AudienceTopicOutput) =>
-  getAIProvider().generateVideoOutline(title, topic)
+export const generateVideoOutline = (title: string, topic: AudienceTopicOutput, language?: 'english' | 'hinglish') =>
+  getAIProvider().generateVideoOutline(title, topic, language)
 
-export const generateVideoDescription = (title: string, outline: string[], keywords: string[]) =>
-  getAIProvider().generateVideoDescription(title, outline, keywords)
+export const generateVideoDescription = (title: string, outline: string[], keywords: string[], language?: 'english' | 'hinglish') =>
+  getAIProvider().generateVideoDescription(title, outline, keywords, language)
 
 export const generateLivestreamAgenda = (topic: AudienceTopicOutput, duration: number) =>
   getAIProvider().generateLivestreamAgenda(topic, duration)

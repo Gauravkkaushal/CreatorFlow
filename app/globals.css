@@ -9,29 +9,29 @@
 @layer base {
   :root {
     /* Background */
-    --background: 248 250 252;
-    --background-subtle: 241 245 249;
-    --surface: 255 255 255;
-    --surface-hover: 248 250 252;
+    --background: 15 15 15;
+    --background-subtle: 24 24 24;
+    --surface: 33 33 33;
+    --surface-hover: 47 47 47;
     
     /* Foreground / Text */
-    --foreground: 15 23 42;        /* slate-900 near-black */
-    --foreground-muted: 100 116 139; /* slate-500 */
-    --foreground-subtle: 148 163 184; /* slate-400 */
+    --foreground: 241 241 241;
+    --foreground-muted: 170 170 170;
+    --foreground-subtle: 113 113 113;
     
     /* Primary — Indigo */
-    --primary: 99 102 241;          /* indigo-500 */
-    --primary-dark: 79 70 229;      /* indigo-600 */
-    --primary-light: 165 180 252;   /* indigo-300 */
+    --primary: 255 0 51;
+    --primary-dark: 204 0 41;
+    --primary-light: 255 102 128;
     --primary-foreground: 255 255 255;
     
     /* Secondary — Violet */
-    --secondary: 139 92 246;        /* violet-500 */
-    --secondary-dark: 124 58 237;   /* violet-600 */
+    --secondary: 255 0 51;
+    --secondary-dark: 204 0 41;
     --secondary-foreground: 255 255 255;
     
     /* Accent — Purple */
-    --accent: 168 85 247;           /* purple-500 */
+    --accent: 255 45 85;
     --accent-foreground: 255 255 255;
     
     /* Semantic */
@@ -41,36 +41,36 @@
     --warning-bg: 254 252 232;
     --error: 239 68 68;             /* red-500 */
     --error-bg: 254 242 242;
-    --info: 59 130 246;             /* blue-500 */
-    --info-bg: 239 246 255;
+    --info: 255 0 51;
+    --info-bg: 54 21 25;
     
     /* Border */
-    --border: 226 232 240;          /* slate-200 */
-    --border-subtle: 241 245 249;   /* slate-100 */
-    --border-strong: 203 213 225;   /* slate-300 */
+    --border: 62 62 62;
+    --border-subtle: 42 42 42;
+    --border-strong: 82 82 82;
     
     /* Card */
-    --card: 255 255 255;
-    --card-foreground: 15 23 42;
+    --card: 33 33 33;
+    --card-foreground: 241 241 241;
     
     /* Popover */
-    --popover: 255 255 255;
-    --popover-foreground: 15 23 42;
+    --popover: 33 33 33;
+    --popover-foreground: 241 241 241;
     
     /* Muted */
-    --muted: 241 245 249;
-    --muted-foreground: 100 116 139;
+    --muted: 42 42 42;
+    --muted-foreground: 170 170 170;
     
     /* Input */
-    --input: 226 232 240;
-    --ring: 99 102 241;
+    --input: 62 62 62;
+    --ring: 255 0 51;
     
     /* Sidebar */
-    --sidebar: 255 255 255;
-    --sidebar-foreground: 51 65 85;
-    --sidebar-border: 226 232 240;
-    --sidebar-accent: 238 242 255;  /* indigo-50 */
-    --sidebar-accent-foreground: 79 70 229; /* indigo-600 */
+    --sidebar: 15 15 15;
+    --sidebar-foreground: 241 241 241;
+    --sidebar-border: 62 62 62;
+    --sidebar-accent: 46 46 46;
+    --sidebar-accent-foreground: 255 255 255;
     
     /* Radius */
     --radius: 0.75rem;
@@ -86,9 +86,9 @@
     --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.08);
     
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, rgb(99 102 241), rgb(139 92 246));
-    --gradient-hero: linear-gradient(135deg, rgb(238 242 255) 0%, rgb(245 243 255) 50%, rgb(250 245 255) 100%);
-    --gradient-card: linear-gradient(145deg, rgb(255 255 255), rgb(248 250 252));
+    --gradient-primary: linear-gradient(135deg, rgb(255 0 51), rgb(204 0 41));
+    --gradient-hero: linear-gradient(135deg, rgb(15 15 15), rgb(24 24 24));
+    --gradient-card: linear-gradient(145deg, rgb(33 33 33), rgb(24 24 24));
   }
 }
 
@@ -278,13 +278,13 @@
 }
 
 .creator-workspace .bg-white {
-  background-color: #151b2e !important;
+  background-color: #212121 !important;
 }
 
 .creator-workspace .bg-slate-50,
 .creator-workspace .bg-slate-50\/50,
 .creator-workspace .bg-slate-100 {
-  background-color: #10162a !important;
+  background-color: #181818 !important;
 }
 
 .creator-workspace .bg-slate-200 {
@@ -338,7 +338,7 @@
 .creator-workspace input,
 .creator-workspace textarea,
 .creator-workspace select {
-  background-color: #0b1020 !important;
+  background-color: #0f0f0f !important;
   border-color: rgb(255 255 255 / 0.12) !important;
   color: #f8fafc !important;
 }
@@ -349,7 +349,7 @@
 }
 
 .creator-workspace option {
-  background: #151b2e;
+  background: #212121;
   color: #f8fafc;
 }
 
@@ -374,7 +374,7 @@
 
 /* Restrained creator-studio surfaces */
 .creator-workspace {
-  background: #0b1020;
+  background: #0f0f0f;
 }
 
 .creator-orb {
@@ -389,7 +389,7 @@
   right: -12rem;
   height: 32rem;
   width: 32rem;
-  background: #5b4fe9;
+  background: #ff0033;
 }
 
 .creator-orb-secondary {
@@ -397,11 +397,11 @@
   left: 26%;
   height: 29rem;
   width: 29rem;
-  background: #155e75;
+  background: #3a090f;
 }
 
 .creator-main {
-  background: linear-gradient(120deg, rgb(11 16 32 / 0.58), rgb(14 20 38 / 0.36));
+  background: #0f0f0f;
 }
 
 .dashboard-shell-content {
@@ -416,7 +416,7 @@
 
 .creator-workspace [class*="bg-[#151b2e]"],
 .creator-workspace [class*="bg-[#10162a]"] {
-  background: rgb(21 28 48 / 0.8) !important;
+  background: rgb(33 33 33 / 0.95) !important;
   border-color: rgb(255 255 255 / 0.1) !important;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -437,8 +437,8 @@
 }
 
 .creator-workspace .kanban-column-active {
-  border-color: rgb(167 139 250 / 0.65) !important;
-  background: linear-gradient(180deg, rgb(124 58 237 / 0.18), rgb(255 255 255 / 0.025)) !important;
+  border-color: rgb(255 0 51 / 0.65) !important;
+  background: linear-gradient(180deg, rgb(255 0 51 / 0.14), rgb(255 255 255 / 0.025)) !important;
 }
 
 .creator-workspace .kanban-card {
@@ -451,7 +451,7 @@
 
 .creator-workspace .kanban-card:hover {
   transform: translateY(-2px);
-  border-color: rgb(167 139 250 / 0.45) !important;
+  border-color: rgb(255 0 51 / 0.45) !important;
   box-shadow: 0 14px 28px rgb(2 6 23 / 0.26) !important;
 }
 
@@ -477,3 +477,71 @@
   .creator-page-enter { animation: none; }
   .creator-workspace .kanban-card { transition: none; }
 }
+
+/* YouTube Studio palette bridge for older utility-first screens. */
+.creator-workspace .bg-indigo-50,
+.creator-workspace .bg-indigo-100,
+.creator-workspace .bg-violet-50,
+.creator-workspace .bg-violet-100,
+.creator-workspace .bg-blue-50,
+.creator-workspace .bg-blue-100 {
+  background-color: rgb(255 0 51 / 0.12) !important;
+}
+
+.creator-workspace .bg-indigo-500,
+.creator-workspace .bg-indigo-600,
+.creator-workspace .bg-violet-500,
+.creator-workspace .bg-violet-600,
+.creator-workspace .bg-blue-600 {
+  background-color: #ff0033 !important;
+}
+
+.creator-workspace .hover\:bg-indigo-700:hover,
+.creator-workspace .hover\:bg-indigo-600:hover,
+.creator-workspace .hover\:bg-violet-400:hover,
+.creator-workspace .hover\:bg-violet-500:hover,
+.creator-workspace .hover\:bg-blue-100:hover {
+  background-color: #cc0029 !important;
+}
+
+.creator-workspace .text-indigo-400,
+.creator-workspace .text-indigo-500,
+.creator-workspace .text-indigo-600,
+.creator-workspace .text-indigo-700,
+.creator-workspace .text-indigo-800,
+.creator-workspace .text-violet-200,
+.creator-workspace .text-violet-300,
+.creator-workspace .text-violet-600,
+.creator-workspace .text-violet-700,
+.creator-workspace .text-blue-500,
+.creator-workspace .text-blue-600,
+.creator-workspace .text-blue-700 {
+  color: #ff6b82 !important;
+}
+
+.creator-workspace .border-indigo-100,
+.creator-workspace .border-indigo-200,
+.creator-workspace .border-indigo-300,
+.creator-workspace .border-indigo-500,
+.creator-workspace .border-violet-400,
+.creator-workspace .border-violet-500,
+.creator-workspace .border-blue-100 {
+  border-color: rgb(255 0 51 / 0.45) !important;
+}
+
+.creator-workspace .focus\:border-indigo-400:focus,
+.creator-workspace .focus\:ring-indigo-500\/30:focus {
+  border-color: #ff0033 !important;
+  --tw-ring-color: rgb(255 0 51 / 0.3) !important;
+}
+
+.creator-workspace .accent-indigo-600 { accent-color: #ff0033 !important; }
+.creator-workspace .from-indigo-500,
+.creator-workspace .from-violet-500,
+.creator-workspace .from-sky-500 { --tw-gradient-from: #ff0033 var(--tw-gradient-from-position) !important; }
+.creator-workspace .via-indigo-700,
+.creator-workspace .via-violet-600,
+.creator-workspace .via-fuchsia-600 { --tw-gradient-via: #9b001e var(--tw-gradient-via-position) !important; }
+.creator-workspace .to-violet-950,
+.creator-workspace .to-violet-900,
+.creator-workspace .to-fuchsia-950 { --tw-gradient-to: #260308 var(--tw-gradient-to-position) !important; }

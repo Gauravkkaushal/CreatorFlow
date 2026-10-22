@@ -102,18 +102,20 @@ Whether you're a beginner just starting out or an experienced developer looking 
       </div>
 
       {/* Summary stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-3">
         {[
           { label: 'Published Videos', value: DEMO_VIDEOS.length.toString(), icon: Video, color: 'text-indigo-600', bg: 'bg-indigo-50' },
           { label: 'Total Views', value: formatNumber(DEMO_VIDEOS.reduce((s, v) => s + (v.viewCount ?? 0), 0)), icon: Eye, color: 'text-violet-600', bg: 'bg-violet-50' },
           { label: 'Total Likes', value: formatNumber(DEMO_VIDEOS.reduce((s, v) => s + (v.likeCount ?? 0), 0)), icon: ThumbsUp, color: 'text-pink-600', bg: 'bg-pink-50' },
         ].map((stat) => (
-          <div key={stat.label} className="bg-[#151b2e] border border-white/8 rounded-2xl p-5 shadow-xl shadow-black/10">
-            <div className={`w-9 h-9 ${stat.bg} rounded-lg flex items-center justify-center mb-3`}>
-              <stat.icon className={`w-4.5 h-4.5 ${stat.color}`} />
+          <div key={stat.label} className="flex items-center gap-3 rounded-xl border border-white/8 bg-[#151b2e] px-4 py-3 shadow-lg shadow-black/10">
+            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${stat.bg}`}>
+              <stat.icon className={`h-4 w-4 ${stat.color}`} />
             </div>
-            <div className="text-xl font-bold text-white">{stat.value}</div>
-            <div className="text-xs text-slate-500 mt-0.5">{stat.label}</div>
+            <div className="min-w-0">
+              <div className="text-lg font-bold leading-5 text-white">{stat.value}</div>
+              <div className="mt-0.5 truncate text-[11px] text-slate-500">{stat.label}</div>
+            </div>
           </div>
         ))}
       </div>

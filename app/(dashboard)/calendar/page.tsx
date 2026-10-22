@@ -10,7 +10,6 @@ import {
   Video,
   Zap,
   Calendar,
-  Info,
 } from 'lucide-react'
 import { DEMO_CONTENT_IDEAS } from '@/lib/demo-mode'
 import { formatDate } from '@/lib/utils'
@@ -168,18 +167,9 @@ export default function CalendarPage() {
     : `${MONTHS[currentMonth]} ${currentYear}`
 
   return (
-    <div className="mx-auto max-w-7xl space-y-7 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium text-violet-300">Publishing calendar</p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight text-white">Plan a week your audience can count on.</h1>
-          <p className="text-sm text-slate-400 mt-2">Schedule videos, Shorts, and live sessions without losing sight of your workload.</p>
-        </div>
+    <div className="mx-auto flex h-[calc(100vh-9rem)] max-w-7xl flex-col gap-4 animate-fade-in">
+      <div className="flex shrink-0 justify-end">
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs font-medium text-amber-800">
-            <Info className="w-3.5 h-3.5" /> Demo Mode
-          </span>
           <div className="flex rounded-xl border border-white/8 bg-white/[0.04] p-1">
             {(['month', 'week'] as const).map((v) => (
               <button
@@ -202,18 +192,8 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center gap-4 rounded-2xl border border-white/8 bg-[#151b2e] px-5 py-3">
-        {Object.entries(TYPE_CONFIG).map(([type, cfg]) => (
-          <div key={type} className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full" style={{ background: cfg.color }} />
-            <span className="text-xs text-slate-300">{cfg.label}</span>
-          </div>
-        ))}
-      </div>
-
       {/* Calendar */}
-      <div className="overflow-hidden rounded-2xl border border-white/8 bg-[#151b2e] shadow-xl shadow-black/20">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/8 bg-[#151b2e] shadow-xl shadow-black/20">
         {/* Month nav */}
         <div className="flex items-center justify-between p-5 border-b border-white/8">
           <button onClick={prevPeriod} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
@@ -245,9 +225,9 @@ export default function CalendarPage() {
         </div>
 
         {/* Calendar grid */}
-        <div className="grid grid-cols-7">
+        <div className="grid min-h-0 flex-1 grid-cols-7" style={{ gridTemplateRows: `repeat(${Math.ceil(calendarCells.length / 7)}, minmax(0, 1fr))` }}>
           {calendarCells.map((date, index) => {
-            if (!date) return <div key={`empty-${index}`} className="min-h-[116px] border-b border-r border-white/5 bg-black/10" />
+            if (!date) return <div key={`empty-${index}`} className="min-h-0 border-b border-r border-white/5 bg-black/10" />
             const dayEvents = getEventsForDate(date)
             const isTd = isToday(date)
 
@@ -255,7 +235,7 @@ export default function CalendarPage() {
               <div
                 key={date.toISOString()}
                 onClick={() => { setSelectedDate(date); setSelectedEvent(null); setShowModal(true); setNewTitle(''); setNewType('video') }}
-                className={`min-h-[116px] border-b border-r border-white/7 p-2.5 cursor-pointer hover:bg-white/[0.035] transition-colors ${view === 'week' ? 'min-h-[420px]' : ''} ${
+                className={`min-h-0 overflow-hidden border-b border-r border-white/7 p-2.5 cursor-pointer hover:bg-white/[0.035] transition-colors ${
                   isTd ? 'bg-violet-500/10' : ''
                 }`}
               >

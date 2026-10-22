@@ -44,16 +44,16 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className="min-h-screen bg-slate-50 antialiased">
+      <body className="min-h-screen bg-[#0f0f0f] antialiased">
         <Providers>
           {children}
           <Toaster
             position="bottom-right"
             toastOptions={{
               style: {
-                background: 'white',
-                border: '1px solid #e2e8f0',
-                color: '#0f172a',
+                background: '#212121',
+                border: '1px solid #3e3e3e',
+                color: '#f1f1f1',
               },
             }}
           />
