@@ -16,13 +16,10 @@ export function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
-  // Demo access is intentional; missing configuration must not silently become demo mode.
-  const isDemo = process.env.DEMO_MODE === 'true'
-  if (isDemo) {
-    return NextResponse.next()
-  }
-
   // Check auth session token from cookies (Edge-safe, no Node.js/mongodb dependencies)
+  // NOTE: In DEMO_MODE the NextAuth strategy is 'jwt', so a valid session cookie is still
+  // issued after the demo sign-in. We do NOT skip this check in demo mode — demo users
+  // must still hold a valid JWT cookie, which they receive automatically on "Try Demo" login.
   const token =
     req.cookies.get('authjs.session-token') ||
     req.cookies.get('__Secure-authjs.session-token') ||

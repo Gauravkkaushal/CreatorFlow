@@ -5,7 +5,7 @@
  * (or integrate into your test runner of choice)
  */
 
-import { formatNumber, formatRelativeTime, cn } from '@/lib/utils'
+import { formatNumber, formatRelativeTime, cn, getInitials } from '@/lib/utils'
 
 // ─── formatNumber ─────────────────────────────────────────────────────────────
 
@@ -18,7 +18,13 @@ describe('formatNumber', () => {
   it('formats thousands with K suffix', () => {
     expect(formatNumber(1_000)).toBe('1K')
     expect(formatNumber(1_500)).toBe('1.5K')
-    expect(formatNumber(999_999)).toBe('1000K')
+    expect(formatNumber(999_499)).toBe('999.5K')
+  })
+
+  it('formats numbers near the K/M boundary correctly', () => {
+    // 999_999 rounds to 1000.0K which should escalate to 1M
+    expect(formatNumber(999_999)).toBe('1M')
+    expect(formatNumber(1_000_000)).toBe('1M')
   })
 
   it('formats millions with M suffix', () => {
@@ -86,5 +92,33 @@ describe('cn', () => {
 
   it('ignores falsy values', () => {
     expect(cn('a', false, null, undefined, 'b')).toBe('a b')
+  })
+})
+
+// ─── getInitials ──────────────────────────────────────────────────────────────
+
+describe('getInitials', () => {
+  it('returns initials for a full name', () => {
+    expect(getInitials('John Doe')).toBe('JD')
+  })
+
+  it('returns a single initial for a single-word name', () => {
+    expect(getInitials('Alice')).toBe('A')
+  })
+
+  it('returns at most 2 characters', () => {
+    expect(getInitials('John Michael Doe').length).toBeLessThanOrEqual(2)
+  })
+
+  it('returns "?" for an empty string', () => {
+    expect(getInitials('')).toBe('?')
+  })
+
+  it('returns "?" for a whitespace-only string', () => {
+    expect(getInitials('   ')).toBe('?')
+  })
+
+  it('uppercases the result', () => {
+    expect(getInitials('alice bob')).toBe('AB')
   })
 })

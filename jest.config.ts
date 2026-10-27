@@ -48,8 +48,8 @@ const customConfig: Config = {
   // Ignore patterns
   testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/.next/'],
 
-  // Setup files (optional — add global mocks here if needed)
-  // setupFilesAfterFramework: ['<rootDir>/tests/setup.ts'],
+  // Setup files (optional - add global mocks here if needed)
+  // setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
 }
 
 // createJestConfig wraps our config to ensure it works with Next.js

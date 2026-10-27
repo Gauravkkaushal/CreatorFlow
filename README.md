@@ -1,4 +1,4 @@
-# CreatorFlow AI 🚀
+﻿# CreatorFlow AI 🚀
 
 > **AI-Powered Audience Intelligence and YouTube Content Automation Platform**  
 > *From audience insights to action.*
@@ -47,8 +47,8 @@ CreatorFlow AI helps YouTube creators turn their audience comments into data-dri
 ### 1. Clone & Install
 
 ```bash
-git clone <repo-url>
-cd creatorflow-ai
+git clone https://github.com/Gauravkkaushal/CreatorFlow.git
+cd CreatorFlow
 npm install
 ```
 

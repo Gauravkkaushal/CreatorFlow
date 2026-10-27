@@ -18,14 +18,23 @@ export function formatRelativeTime(date: Date | string): string {
   return formatDistanceToNow(d, { addSuffix: true })
 }
 
+/**
+ * Format a number into a compact human-readable string.
+ * Correctly handles boundaries: 999_500+ → "1M", not "1000K".
+ */
 export function formatNumber(n: number): string {
-  if (n >= 1_000_000) {
-    const val = (n / 1_000_000).toFixed(1)
-    return `${val.endsWith('.0') ? val.slice(0, -2) : val}M`
+  const abs = Math.abs(n)
+  if (abs >= 1_000_000) {
+    const val = n / 1_000_000
+    return `${parseFloat(val.toFixed(1))}M`
   }
-  if (n >= 1_000) {
-    const val = (n / 1_000).toFixed(1)
-    return `${val.endsWith('.0') ? val.slice(0, -2) : val}K`
+  if (abs >= 1_000) {
+    const val = n / 1_000
+    // If rounding pushes us to 1000K, escalate to M
+    if (Math.abs(val) >= 1000) {
+      return `${parseFloat((n / 1_000_000).toFixed(1))}M`
+    }
+    return `${parseFloat(val.toFixed(1))}K`
   }
   return n.toString()
 }
@@ -54,10 +63,17 @@ export function truncate(text: string, length: number): string {
   return text.slice(0, length).trim() + '…'
 }
 
+/**
+ * Returns up to 2 uppercase initials from a display name.
+ * Returns '?' for empty/blank input.
+ */
 export function getInitials(name: string): string {
-  return name
+  const trimmed = name.trim()
+  if (!trimmed) return '?'
+  return trimmed
     .split(' ')
-    .map((n) => n[0])
+    .map((n) => n[0] ?? '')
+    .filter(Boolean)
     .join('')
     .toUpperCase()
     .slice(0, 2)

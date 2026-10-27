@@ -287,6 +287,17 @@ export function getYouTubeService(): YouTubeLiveAdapter | YouTubeDemoAdapter {
   return _youtubeAdapter
 }
 
+/**
+ * Reset the cached YouTube adapter singleton.
+ * Use this in tests to prevent adapter state from leaking between test cases:
+ *
+ *   import { __resetYouTubeServiceForTests } from '@/services/youtube'
+ *   beforeEach(() => { __resetYouTubeServiceForTests() })
+ */
+export function __resetYouTubeServiceForTests(): void {
+  _youtubeAdapter = null
+}
+
 // Named exports
 export const getChannelInfo = (channelId: string) =>
   getYouTubeService().getChannelInfo(channelId)
@@ -309,7 +320,9 @@ export const youtubeService = {
     const service = getYouTubeService()
     const channelInfo = await service.getChannelInfo(channelId)
     const { videos } = await service.getRecentVideos(channelId, { maxResults: 10 })
-    const firstVideoId = (videos[0] as { id?: string; videoId?: string })?.id ?? (videos[0] as { id?: string; videoId?: string })?.videoId ?? 'demo-video-1'
+    // Use the strongly-typed id field from YouTubeVideo
+    const firstVideo = videos[0] as YouTubeVideo | undefined
+    const firstVideoId = firstVideo?.id ?? 'demo-video-1'
     const { comments } = await service.getVideoComments(firstVideoId, { maxResults: 50 })
     return {
       channelInfo,

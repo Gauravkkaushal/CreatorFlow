@@ -5,12 +5,30 @@ import clientPromise from "@/lib/mongodb-client"
 
 const isDemoMode = process.env.DEMO_MODE === 'true'
 
+// Validate required environment variables at startup (non-demo mode only)
+if (!isDemoMode) {
+  const required = [
+    'GOOGLE_CLIENT_ID',
+    'GOOGLE_CLIENT_SECRET',
+    'NEXTAUTH_SECRET',
+  ] as const
+
+  for (const key of required) {
+    if (!process.env[key]) {
+      throw new Error(
+        `Missing required environment variable: ${key}. ` +
+        'Set it in .env.local or set DEMO_MODE=true to run without real credentials.'
+      )
+    }
+  }
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...(isDemoMode ? {} : { adapter: MongoDBAdapter(clientPromise) }),
   providers: [
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: process.env.GOOGLE_CLIENT_ID ?? '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
       authorization: {
         params: {
           scope: [

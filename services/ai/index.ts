@@ -487,3 +487,11 @@ export const generateLivestreamAgenda = (topic: AudienceTopicOutput, duration: n
 
 export const suggestCommentReplies = (comment: string, channelContext?: string) =>
   getAIProvider().suggestCommentReplies(comment, channelContext)
+
+/**
+ * Reset the cached AI provider singleton.
+ * Use this in tests to prevent adapter state from leaking between test cases.
+ */
+export function __resetAIProviderForTests(): void {
+  _aiProvider = null
+}
