@@ -438,7 +438,7 @@ class DemoAdapter implements AIProvider {
     }
   }
 
-  async suggestCommentReplies(comment: string): Promise<string[]> {
+  async suggestCommentReplies(_comment: string): Promise<string[]> {
     await new Promise((r) => setTimeout(r, 300))
     return [
       'Thanks for the feedback! Really appreciate you watching 🙏',

@@ -29,12 +29,11 @@ export function formatNumber(n: number): string {
     return `${parseFloat(val.toFixed(1))}M`
   }
   if (abs >= 1_000) {
-    const val = n / 1_000
-    // If rounding pushes us to 1000K, escalate to M
-    if (Math.abs(val) >= 1000) {
+    const roundedK = parseFloat((n / 1_000).toFixed(1))
+    if (Math.abs(roundedK) >= 1000) {
       return `${parseFloat((n / 1_000_000).toFixed(1))}M`
     }
-    return `${parseFloat(val.toFixed(1))}K`
+    return `${roundedK}K`
   }
   return n.toString()
 }

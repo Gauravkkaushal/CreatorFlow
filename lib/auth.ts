@@ -4,9 +4,10 @@ import { MongoDBAdapter } from "@auth/mongodb-adapter"
 import clientPromise from "@/lib/mongodb-client"
 
 const isDemoMode = process.env.DEMO_MODE === 'true'
+const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build' || process.env.npm_lifecycle_event === 'build'
 
-// Validate required environment variables at startup (non-demo mode only)
-if (!isDemoMode) {
+// Validate required environment variables at runtime (non-demo mode only, outside static build analysis)
+if (!isDemoMode && !isBuildPhase) {
   const required = [
     'GOOGLE_CLIENT_ID',
     'GOOGLE_CLIENT_SECRET',

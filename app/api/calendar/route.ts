@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { isDemoMode } from '@/lib/demo-mode'
-import type { ApiResponse, CalendarEvent } from '@/types'
+import type { ApiResponse, CalendarEvent, ContentStatus, ContentType } from '@/types'
 
 // ─── Validation schemas ───────────────────────────────────────────────────────
 
-const CalendarEventTypeEnum = z.enum(['video', 'livestream', 'short'])
-const CalendarEventStatusEnum = z.enum(['scheduled', 'completed', 'cancelled'])
+const CalendarEventTypeEnum = z.enum(['video', 'livestream', 'short']) satisfies z.ZodType<ContentType>
+const CalendarEventStatusEnum = z.enum(['idea', 'draft', 'approved', 'scheduled', 'published']) satisfies z.ZodType<ContentStatus>
 
 const CreateCalendarEventSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
@@ -180,10 +180,10 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json<ApiResponse>({ success: false, error: 'Event not found' }, { status: 404 })
     }
 
-    const safeUpdates = parsed.data
-    const updatedFields: Partial<CalendarEvent> = { ...safeUpdates }
-    if (safeUpdates.startDate) {
-      updatedFields.startDate = new Date(safeUpdates.startDate)
+    const { startDate, ...restUpdates } = parsed.data
+    const updatedFields: Partial<CalendarEvent> = { ...restUpdates }
+    if (startDate) {
+      updatedFields.startDate = new Date(startDate)
     }
 
     DEMO_CALENDAR_EVENTS[idx] = {
