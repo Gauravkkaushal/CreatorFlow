@@ -1,11 +1,3 @@
-/**
- * AI Service — Modular provider adapter
- * 
- * Currently uses Google Gemini API.
- * Swap provider by changing AI_PROVIDER env var and implementing
- * a new adapter that satisfies the AIProvider interface.
- */
-
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai'
 import {
   AnalysisOutputSchema,
@@ -16,10 +8,6 @@ import {
   type ContentIdeaAIOutput,
   type LivestreamAgendaOutput,
 } from '@/schemas'
-
-// ============================================================
-// Types
-// ============================================================
 
 export interface AIComment {
   id: string

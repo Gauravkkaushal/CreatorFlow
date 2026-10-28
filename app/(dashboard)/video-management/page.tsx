@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Video,
   Eye,
@@ -15,6 +16,11 @@ import {
   Info,
   CheckCircle2,
   Search,
+  BarChart3,
+  Users,
+  MousePointerClick,
+  Gauge,
+  ExternalLink,
 } from 'lucide-react'
 import { DEMO_VIDEOS } from '@/lib/demo-mode'
 import { formatDate, formatNumber, formatDuration } from '@/lib/utils'
@@ -26,12 +32,71 @@ interface SEOResult {
   description: string
 }
 
+type VideoItem = typeof DEMO_VIDEOS[number]
+type AnalyticsTab = 'overview' | 'reach' | 'engagement' | 'audience'
+
+const ANALYTICS_TABS: { key: AnalyticsTab; label: string }[] = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'reach', label: 'Reach' },
+  { key: 'engagement', label: 'Engagement' },
+  { key: 'audience', label: 'Audience' },
+]
+
+function getVideoAnalytics(video: VideoItem) {
+  const views = video.viewCount ?? 0
+  const likes = video.likeCount ?? 0
+  const comments = video.commentCount ?? 0
+  const videoIndex = DEMO_VIDEOS.findIndex((item) => item.id === video.id) + 1
+  const averageViewDuration = 8 * 60 + videoIndex * 71
+  const watchHours = Math.round((views * averageViewDuration) / 3600)
+  const impressions = Math.round(views * (18.4 + videoIndex * 0.8))
+  const ctr = 4.8 + videoIndex * 0.4
+  const retention = 38 + videoIndex * 3
+  const returning = Math.round(views * (0.31 + videoIndex * 0.02))
+  const uniqueViewers = Math.round(views * 0.72)
+  const subscribers = Math.round(views * (0.008 + videoIndex * 0.001))
+  const points = [12, 25, 38, 48, 56, 62, 69, 75, 81, 86, 92, 97].map((base, index) =>
+    Math.round((views / 100) * (base / 10) * (index === 0 ? 0.74 : 1))
+  )
+
+  return { views, likes, comments, averageViewDuration, watchHours, impressions, ctr, retention, returning, uniqueViewers, subscribers, points }
+}
+
+function formatWatchDuration(seconds: number) {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
+}
+
+function AnalyticsChart({ points, color = '#ff0033' }: { points: number[]; color?: string }) {
+  const max = Math.max(...points, 1)
+  const path = points.map((point, index) => {
+    const x = 4 + (index / (points.length - 1)) * 92
+    const y = 91 - (point / max) * 76
+    return `${index === 0 ? 'M' : 'L'} ${x} ${y}`
+  }).join(' ')
+
+  return (
+    <div className="mt-3 h-28 w-full rounded-lg border border-white/8 bg-[#101010] p-2">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full overflow-visible" aria-label="Video performance chart" role="img">
+        {[20, 45, 70, 95].map((y) => <line key={y} x1="4" x2="96" y1={y} y2={y} stroke="rgba(255,255,255,0.10)" strokeWidth="0.5" />)}
+        <path d={`${path} L 96 96 L 4 96 Z`} fill={color} opacity="0.12" />
+        <path d={path} fill="none" stroke={color} strokeWidth="1.8" vectorEffect="non-scaling-stroke" />
+      </svg>
+      <div className="mt-1 flex justify-between text-[10px] text-slate-500"><span>Published</span><span>Last 7 days</span><span>Today</span></div>
+    </div>
+  )
+}
+
 export default function VideoManagementPage() {
+  const [isMounted, setIsMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [seoModal, setSeoModal] = useState<typeof DEMO_VIDEOS[0] | null>(null)
   const [generating, setGenerating] = useState(false)
   const [seoResult, setSeoResult] = useState<SEOResult | null>(null)
   const [activeTab, setActiveTab] = useState<'titles' | 'tags' | 'description'>('titles')
+  const [analyticsModal, setAnalyticsModal] = useState<VideoItem | null>(null)
+  const [analyticsTab, setAnalyticsTab] = useState<AnalyticsTab>('overview')
+
+  useEffect(() => setIsMounted(true), [])
 
   const filteredVideos = DEMO_VIDEOS.filter((v) =>
     !searchQuery || v.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -77,6 +142,11 @@ Whether you're a beginner just starting out or an experienced developer looking 
 #webdev #programming #tutorial #javascript`,
       })
     }, 2000)
+  }
+
+  const openAnalytics = (video: VideoItem) => {
+    setAnalyticsModal(video)
+    setAnalyticsTab('overview')
   }
 
   const getThumbnailConcepts = (title: string) => [
@@ -188,6 +258,9 @@ Whether you're a beginner just starting out or an experienced developer looking 
                     >
                       <Sparkles className="w-3.5 h-3.5" /> AI SEO Optimizer
                     </button>
+                    <button onClick={() => openAnalytics(video)} className="px-3 py-1.5 bg-white/8 hover:bg-white/12 border border-white/10 text-slate-200 text-xs font-medium rounded-lg transition-colors flex items-center gap-1">
+                      <BarChart3 className="w-3.5 h-3.5" /> Analytics
+                    </button>
                     <button onClick={() => window.open(`https://www.youtube.com/watch?v=${video.id}`, '_blank', 'noopener,noreferrer')} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-medium rounded-lg transition-colors flex items-center gap-1">
                       <Eye className="w-3.5 h-3.5" /> View
                     </button>
@@ -198,6 +271,88 @@ Whether you're a beginner just starting out or an experienced developer looking 
           )
         })}
       </div>
+
+      {/* YouTube Studio-style video analytics */}
+      {isMounted && analyticsModal && createPortal((() => {
+        const data = getVideoAnalytics(analyticsModal)
+        const engagement = data.views ? ((data.likes + data.comments) / data.views * 100).toFixed(1) : '0.0'
+        const tabContent: Record<AnalyticsTab, { eyebrow: string; heading: string; description: string; metrics: { label: string; value: string; change?: string; icon: typeof Eye }[]; chartLabel: string }> = {
+          overview: {
+            eyebrow: 'Since published', heading: `${formatNumber(data.views)} views`, description: 'Performance compared with your typical videos.', chartLabel: 'Views',
+            metrics: [
+              { label: 'Views', value: formatNumber(data.views), change: '+18% vs usual', icon: Eye },
+              { label: 'Watch time', value: `${formatNumber(data.watchHours)} hours`, change: '+12% vs usual', icon: Clock },
+              { label: 'Subscribers', value: `+${data.subscribers}`, change: '+4 vs usual', icon: Users },
+            ],
+          },
+          reach: {
+            eyebrow: 'How viewers find this video', heading: `${formatNumber(data.impressions)} impressions`, description: 'Thumbnail impressions and click-through performance.', chartLabel: 'Impressions',
+            metrics: [
+              { label: 'Impressions', value: formatNumber(data.impressions), change: '+21% vs usual', icon: Eye },
+              { label: 'Impressions click-through rate', value: `${data.ctr.toFixed(1)}%`, change: '+0.6% vs usual', icon: MousePointerClick },
+              { label: 'Views from impressions', value: formatNumber(Math.round(data.impressions * data.ctr / 100)), icon: TrendingUp },
+            ],
+          },
+          engagement: {
+            eyebrow: 'How viewers engage', heading: `${formatWatchDuration(data.averageViewDuration)} average view duration`, description: 'Watch time and audience retention for this video.', chartLabel: 'Audience retention',
+            metrics: [
+              { label: 'Watch time', value: `${formatNumber(data.watchHours)} hours`, change: '+12% vs usual', icon: Clock },
+              { label: 'Average view duration', value: formatWatchDuration(data.averageViewDuration), change: '+0:42 vs usual', icon: Gauge },
+              { label: 'Likes & comments', value: `${engagement}%`, change: 'Engagement rate', icon: ThumbsUp },
+            ],
+          },
+          audience: {
+            eyebrow: 'Who is watching', heading: `${formatNumber(data.uniqueViewers)} unique viewers`, description: 'Your audience activity for this individual video.', chartLabel: 'Unique viewers',
+            metrics: [
+              { label: 'Unique viewers', value: formatNumber(data.uniqueViewers), change: '+16% vs usual', icon: Users },
+              { label: 'Returning viewers', value: formatNumber(data.returning), change: '+9% vs usual', icon: TrendingUp },
+              { label: 'New subscribers', value: `+${data.subscribers}`, change: 'From this video', icon: Users },
+            ],
+          },
+        }
+        const activeAnalytics = tabContent[analyticsTab]
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm" onClick={(event) => event.target === event.currentTarget && setAnalyticsModal(null)}>
+              <div className="w-full max-w-5xl overflow-hidden rounded-2xl border border-white/10 bg-[#151515] shadow-2xl shadow-black/70 animate-slide-up">
+                <div className="flex items-start justify-between gap-4 border-b border-white/8 px-5 py-3.5 sm:px-6">
+                  <div className="flex min-w-0 gap-3">
+                    <img src={analyticsModal.thumbnailUrl} alt="" className="h-11 w-20 shrink-0 rounded-md object-cover" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-[#ff6b82]">Video analytics</p>
+                      <h2 className="mt-0.5 truncate text-base font-semibold text-white sm:text-lg">{analyticsModal.title}</h2>
+                    </div>
+                  </div>
+                  <button onClick={() => setAnalyticsModal(null)} className="rounded-lg p-1 text-slate-400 hover:bg-white/8 hover:text-white" aria-label="Close analytics"><X className="h-5 w-5" /></button>
+                </div>
+
+                <div className="flex gap-5 overflow-x-auto border-b border-white/8 px-5 sm:px-6">
+                  {ANALYTICS_TABS.map((tab) => <button key={tab.key} onClick={() => setAnalyticsTab(tab.key)} className={`shrink-0 border-b-2 py-2.5 text-sm font-medium transition-colors ${analyticsTab === tab.key ? 'border-[#ff0033] text-white' : 'border-transparent text-slate-500 hover:text-slate-200'}`}>{tab.label}</button>)}
+                </div>
+
+                <div className="p-4 sm:p-5">
+                  <p className="text-xs font-medium uppercase tracking-wider text-slate-500">{activeAnalytics.eyebrow}</p>
+                  <div className="mt-1 flex items-end justify-between gap-4"><h3 className="text-xl font-bold text-white sm:text-2xl">{activeAnalytics.heading}</h3><p className="hidden text-right text-xs text-slate-400 sm:block">{activeAnalytics.description}</p></div>
+
+                  <div className="mt-4 grid divide-y divide-white/8 overflow-hidden rounded-xl border border-white/8 bg-[#101010] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                    {activeAnalytics.metrics.map((metric) => <div key={metric.label} className="p-3">
+                      <div className="flex items-center gap-2 text-xs text-slate-500"><metric.icon className="h-3.5 w-3.5" />{metric.label}</div>
+                      <p className="mt-1 text-lg font-semibold text-white">{metric.value}</p>
+                      {metric.change && <p className="text-[11px] text-emerald-400">{metric.change}</p>}
+                    </div>)}
+                  </div>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-[1.6fr_0.9fr]">
+                  <div className="rounded-xl border border-white/8 bg-[#171717] p-4">
+                    <div className="flex items-center justify-between"><div><h4 className="text-sm font-semibold text-white">{activeAnalytics.chartLabel}</h4><p className="mt-0.5 text-xs text-slate-500">Since this video was published</p></div><span className="rounded-full bg-[#ff0033]/10 px-2.5 py-1 text-[11px] font-medium text-[#ff6b82]">Demo data</span></div>
+                    <AnalyticsChart points={data.points.map((point, index) => analyticsTab === 'engagement' ? Math.max(20, 100 - index * (5 + DEMO_VIDEOS.findIndex((item) => item.id === analyticsModal.id))) : point)} />
+                  </div>
+                    <div className="rounded-xl border border-white/8 bg-[#171717] p-4"><h4 className="text-sm font-semibold text-white">Quick snapshot</h4><div className="mt-3 grid grid-cols-2 gap-3 text-xs"><div><p className="text-slate-500">Likes</p><p className="mt-0.5 font-semibold text-white">{formatNumber(data.likes)}</p></div><div><p className="text-slate-500">Comments</p><p className="mt-0.5 font-semibold text-white">{formatNumber(data.comments)}</p></div><div><p className="text-slate-500">Retention</p><p className="mt-0.5 font-semibold text-white">{data.retention}%</p></div><div><p className="text-slate-500">Published</p><p className="mt-0.5 font-semibold text-white">{formatDate(analyticsModal.publishedAt)}</p></div></div><button onClick={() => { setAnalyticsModal(null); handleOptimize(analyticsModal) }} className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[#ff6b82] hover:text-white"><Sparkles className="h-3.5 w-3.5" />Improve with SEO <ExternalLink className="h-3 w-3" /></button></div>
+                  </div>
+                </div>
+              </div>
+          </div>
+        )
+      })(), document.body)}
 
       {/* SEO Modal */}
       {seoModal && (
