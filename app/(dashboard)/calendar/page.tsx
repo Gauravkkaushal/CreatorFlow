@@ -11,7 +11,10 @@ import {
   Zap,
   Calendar,
 } from 'lucide-react'
-import { DEMO_CONTENT_IDEAS } from '@/lib/demo-mode'
+import { DEMO_CONTENT_IDEAS, isClientDemoMode } from '@/lib/demo-mode'
+import { useIdeas, useCreateIdea, useUpdateIdea } from '@/lib/use-ideas'
+
+const isDemo = isClientDemoMode()
 import { formatDate } from '@/lib/utils'
 
 // ─── Calendar helpers ───────────────────────────────────────────────────────
@@ -94,7 +97,25 @@ export default function CalendarPage() {
   const [currentYear, setCurrentYear] = useState(2026)
   const [currentMonth, setCurrentMonth] = useState(9) // October
   const [today, setToday] = useState<Date | null>(null)
-  const [events, setEvents] = useState<Event[]>(INITIAL_EVENTS)
+  const [demoEvents, setDemoEvents] = useState<Event[]>(INITIAL_EVENTS)
+  const ideas = useIdeas(!isDemo)
+  const createIdea = useCreateIdea()
+  const updateIdea = useUpdateIdea()
+  // Live calendar = saved ideas that have a date
+  const events: Event[] = isDemo
+    ? demoEvents
+    : (ideas.data ?? []).filter((idea) => idea.scheduledDate).map((idea) => ({
+        id: idea._id,
+        title: idea.title,
+        date: new Date(idea.scheduledDate!),
+        type: idea.contentType,
+        status: idea.status === 'published' ? 'published' : 'scheduled',
+        color: TYPE_CONFIG[idea.contentType].color,
+      }))
+  const unscheduledIdeas = isDemo ? DEMO_CONTENT_IDEAS : (ideas.data ?? []).filter((idea) => !idea.scheduledDate)
+  // Set when a saved idea is picked in the add-event form, so it gets scheduled instead of duplicated
+  const [pickedIdeaId, setPickedIdeaId] = useState<string | null>(null)
+  const saveError = (createIdea.error ?? updateIdea.error)?.message
   const [weekAnchor, setWeekAnchor] = useState(new Date(2026, 9, 21))
 
   useEffect(() => {
@@ -142,8 +163,23 @@ export default function CalendarPage() {
 
   const getEventsForDate = (date: Date) => events.filter((event) => isSameDay(new Date(event.date), date))
 
-  const handleAddEvent = () => {
+  const handleAddEvent = async () => {
     if (!newTitle.trim() || !selectedDate) return
+    if (!isDemo) {
+      const scheduledDate = selectedDate.toISOString()
+      const picked = ideas.data?.find((idea) => idea._id === pickedIdeaId)
+      try {
+        if (picked) {
+          await updateIdea.mutateAsync({ id: picked._id, scheduledDate, status: picked.status === 'published' ? 'published' : 'scheduled' })
+        } else {
+          await createIdea.mutateAsync({ title: newTitle.trim().slice(0, 200), contentType: newType, status: 'scheduled', scheduledDate })
+        }
+        setShowModal(false)
+      } catch {
+        // saveError shows the message in the form
+      }
+      return
+    }
     const newEvent: Event = {
       id: `ev-${Date.now()}`,
       title: newTitle,
@@ -152,12 +188,14 @@ export default function CalendarPage() {
       status: 'scheduled' as const,
       color: TYPE_CONFIG[newType].color,
     }
-    setEvents((prev) => [...prev, newEvent])
+    setDemoEvents((prev) => [...prev, newEvent])
     setShowModal(false)
   }
 
   const handleRemoveEvent = (id: string) => {
-    setEvents((prev) => prev.filter((e) => e.id !== id))
+    // Live: only unschedule, so the idea stays in the content planner
+    if (isDemo) setDemoEvents((prev) => prev.filter((e) => e.id !== id))
+    else updateIdea.mutate({ id, scheduledDate: null })
     setSelectedEvent(null)
   }
 
@@ -196,7 +234,7 @@ export default function CalendarPage() {
             ))}
           </div>
           <button
-            onClick={() => { setSelectedDate(today); setShowModal(true); setNewTitle(''); setNewType('video'); setSelectedEvent(null) }}
+            onClick={() => { setSelectedDate(today); setShowModal(true); setNewTitle(''); setNewType('video'); setSelectedEvent(null); setPickedIdeaId(null); createIdea.reset(); updateIdea.reset() }}
             className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" /> Schedule
@@ -246,7 +284,7 @@ export default function CalendarPage() {
             return (
               <div
                 key={date.toISOString()}
-                onClick={() => { setSelectedDate(date); setSelectedEvent(null); setShowModal(true); setNewTitle(''); setNewType('video') }}
+                onClick={() => { setSelectedDate(date); setSelectedEvent(null); setShowModal(true); setNewTitle(''); setNewType('video'); setPickedIdeaId(null); createIdea.reset(); updateIdea.reset() }}
                 className={`min-h-0 overflow-hidden border-b border-r border-white/7 p-2.5 cursor-pointer hover:bg-white/[0.035] transition-colors ${
                   isTd ? 'bg-violet-500/10' : ''
                 }`}
@@ -352,7 +390,7 @@ export default function CalendarPage() {
                   type="text"
                   placeholder="e.g. JWT Authentication Tutorial"
                   value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
+                  onChange={(e) => { setNewTitle(e.target.value); setPickedIdeaId(null) }}
                   className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400"
                 />
               </div>
@@ -376,14 +414,15 @@ export default function CalendarPage() {
                 </div>
               </div>
               {/* Quick add from ideas */}
-              {DEMO_CONTENT_IDEAS.length > 0 && (
+              {saveError && <p role="alert" className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-200">{saveError}</p>}
+              {unscheduledIdeas.length > 0 && (
                 <div>
                   <p className="text-xs text-slate-500 mb-1.5">Or pick from your ideas:</p>
                   <div className="space-y-1 max-h-24 overflow-y-auto">
-                    {DEMO_CONTENT_IDEAS.map((idea) => (
+                    {unscheduledIdeas.map((idea) => (
                       <button
                         key={idea._id}
-                        onClick={() => { setNewTitle(idea.title); setNewType(idea.contentType) }}
+                        onClick={() => { setNewTitle(idea.title); setNewType(idea.contentType); setPickedIdeaId(idea._id) }}
                         className="w-full text-left px-2.5 py-1.5 text-xs text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg transition-colors truncate"
                       >
                         {idea.title}

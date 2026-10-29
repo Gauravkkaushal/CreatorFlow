@@ -151,24 +151,6 @@ export interface ScheduledBroadcast {
   updatedAt: Date
 }
 
-export interface CalendarEvent {
-  _id: string
-  userId: string
-  title: string
-  description?: string
-  startDate: Date
-  endDate?: Date
-  timezone: string
-  type: ContentType
-  status: ContentStatus
-  contentIdeaId?: string
-  broadcastId?: string
-  color?: string
-  isDemo: boolean
-  createdAt: Date
-  updatedAt: Date
-}
-
 export interface ActivityLog {
   _id: string
   userId: string

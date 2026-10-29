@@ -2,7 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { isDemoMode } from '@/lib/demo-mode'
 import { DEMO_TOPICS, DEMO_COMMENTS } from '@/lib/demo-mode'
+import { getLatestAnalysis } from '@/lib/analysis'
 import type { ApiResponse } from '@/types'
+import type { AudienceTopicOutput } from '@/schemas'
+
+export interface LiveInsights {
+  topics: (AudienceTopicOutput & { _id: string })[]
+  totalComments: number
+  analyzedAt: string
+  isDemo: false
+}
 
 
 interface InsightResponse {
@@ -18,13 +27,14 @@ interface InsightResponse {
 }
 
 export async function GET(request: NextRequest) {
+  // Read the request before the try: this is what tells Next 16 not to prerender this route, and the catch must not swallow it
+  const { searchParams } = new URL(request.url)
   try {
     const session = await auth()
     if (!session?.user) {
       return NextResponse.json<ApiResponse>({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { searchParams } = new URL(request.url)
     const videoId = searchParams.get('videoId')
     const channelId = searchParams.get('channelId')
 
@@ -51,13 +61,17 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // In a real implementation, we'd query the AudienceAnalysis MongoDB collection
-    // and return the most recent analysis for the given channelId/videoId.
-    // Placeholder for live mode:
-    return NextResponse.json<ApiResponse>({
-      success: false,
-      error: 'No analysis found. Run a comment analysis first.',
-    }, { status: 404 })
+    const latest = await getLatestAnalysis(session.user.id)
+    // data: null (not 404) so the page can show its "analyze your comments" state
+    return NextResponse.json<ApiResponse<LiveInsights | null>>({
+      success: true,
+      data: latest && {
+        topics: latest.topics as unknown as LiveInsights['topics'],
+        totalComments: latest.totalComments,
+        analyzedAt: (latest.completedAt ?? latest.createdAt).toISOString(),
+        isDemo: false,
+      },
+    })
 
   } catch (err) {
     console.error('[GET /api/audience/insights]', err)

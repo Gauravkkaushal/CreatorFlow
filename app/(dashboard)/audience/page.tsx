@@ -17,7 +17,14 @@ import {
   Info,
 } from 'lucide-react'
 import Link from 'next/link'
-import { DEMO_TOPICS, DEMO_VIDEOS } from '@/lib/demo-mode'
+import { DEMO_TOPICS, DEMO_VIDEOS, isClientDemoMode } from '@/lib/demo-mode'
+import { EmptyState } from '@/components/dashboard/empty-state'
+import { useInsights, useAnalyzeComments } from '@/lib/use-insights'
+import { formatRelativeTime } from '@/lib/utils'
+
+const isDemo = isClientDemoMode()
+
+type Question = { id: string; text: string; videoId?: string; author?: string; likes?: number; answered: boolean }
 
 // ─── Mock sentiment data ───────────────────────────────────────────────────
 const SENTIMENT = { positive: 62, neutral: 24, negative: 14 }
@@ -29,7 +36,7 @@ const KEYWORDS = [
   { word: 'GraphQL', count: 9 }, { word: 'REST API', count: 8 },
 ]
 
-const QUESTIONS = [
+const QUESTIONS: Question[] = [
   { id: 'q1', text: 'How do I implement JWT refresh tokens?', videoId: 'demo-video-1', author: 'Alex Chen', likes: 45, answered: false },
   { id: 'q2', text: 'What is the secure way to store JWTs in a browser?', videoId: 'demo-video-1', author: 'Tom Wilson', likes: 26, answered: false },
   { id: 'q3', text: 'When should I use Server Components vs Client Components?', videoId: 'demo-video-2', author: 'James Kim', likes: 41, answered: false },
@@ -44,7 +51,14 @@ export default function AudiencePage() {
   const [activeTab, setActiveTab] = useState<'topics' | 'questions' | 'keywords'>('topics')
   const [generatingIdea, setGeneratingIdea] = useState<string | null>(null)
 
-  const filteredQuestions = QUESTIONS.filter((q) => {
+  const insights = useInsights(!isDemo)
+  const analyze = useAnalyzeComments()
+  const topics = isDemo ? DEMO_TOPICS : insights.data?.topics ?? []
+  const questions: Question[] = isDemo
+    ? QUESTIONS
+    : topics.flatMap((t) => t.commonQuestions.map((text, i) => ({ id: `${t._id}-${i}`, text, answered: false })))
+
+  const filteredQuestions = questions.filter((q) => {
     const matchVideo = selectedVideo === 'all' || q.videoId === selectedVideo
     const matchSearch = !searchQuery || q.text.toLowerCase().includes(searchQuery.toLowerCase())
     return matchVideo && matchSearch
@@ -57,6 +71,43 @@ export default function AudiencePage() {
 
   const maxKeyword = KEYWORDS[0].count
 
+  const analyzeButton = (
+    <button
+      onClick={() => analyze.mutate()}
+      disabled={analyze.isPending}
+      className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-wait disabled:opacity-70"
+    >
+      <Sparkles className={`h-4 w-4 ${analyze.isPending ? 'animate-pulse' : ''}`} />
+      {analyze.isPending ? 'Analyzing comments… (up to a minute)' : insights.data ? 'Re-analyze comments' : 'Analyze comments'}
+    </button>
+  )
+  const analyzeError = analyze.error && (
+    <div role="alert" className="rounded-2xl border border-red-500/25 bg-red-500/10 px-5 py-4 text-sm text-red-200">{analyze.error.message}</div>
+  )
+
+  if (!isDemo && !insights.data) {
+    return (
+      <div className="mx-auto max-w-7xl space-y-7 animate-fade-in">
+        <div>
+          <p className="text-sm font-medium text-violet-300">Audience signals</p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-white">What your viewers want next.</h1>
+        </div>
+        {analyzeError}
+        {insights.isLoading ? (
+          <div role="status" className="flex items-center justify-center gap-3 rounded-2xl border border-white/8 bg-[#151b2e] py-12 text-sm text-slate-400">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/15 border-t-violet-400" /> Loading audience insights…
+          </div>
+        ) : insights.error ? (
+          <div role="alert" className="rounded-2xl border border-red-500/25 bg-red-500/10 px-5 py-4 text-sm text-red-200">{insights.error.message}</div>
+        ) : (
+          <EmptyState icon={MessageSquare} title="No audience analysis yet" description="Analyze the comments on your 5 latest videos to find the topics and questions your viewers keep raising.">
+            <div className="mt-5">{analyzeButton}</div>
+          </EmptyState>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-7xl space-y-7 animate-fade-in">
       {/* Header */}
@@ -67,25 +118,36 @@ export default function AudiencePage() {
           <p className="text-sm text-slate-500 mt-1">Analyze what your audience wants — turn insights into content</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs font-medium text-amber-800">
-            <Info className="w-3.5 h-3.5" /> Demo Data
-          </span>
-          <Link
-            href="/integrations"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
-          >
-            <Sparkles className="w-4 h-4" /> Connect YouTube
-          </Link>
+          {isDemo ? (
+            <>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs font-medium text-amber-800">
+                <Info className="w-3.5 h-3.5" /> Demo Data
+              </span>
+              <Link
+                href="/integrations"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                <Sparkles className="w-4 h-4" /> Connect YouTube
+              </Link>
+            </>
+          ) : (
+            <>
+              {insights.data && <span className="text-xs text-slate-500">Last analyzed {formatRelativeTime(insights.data.analyzedAt)}</span>}
+              {analyzeButton}
+            </>
+          )}
         </div>
       </div>
+
+      {analyzeError}
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Comments Analyzed', value: '847', icon: MessageSquare, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-          { label: 'Topics Identified', value: '12', icon: TrendingUp, color: 'text-violet-600', bg: 'bg-violet-50' },
-          { label: 'Unanswered Questions', value: '5', icon: HelpCircle, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'Content Opportunities', value: '8', icon: Lightbulb, color: 'text-green-600', bg: 'bg-green-50' },
+          { label: 'Comments Analyzed', value: isDemo ? '847' : String(insights.data?.totalComments ?? 0), icon: MessageSquare, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+          { label: 'Topics Identified', value: isDemo ? '12' : String(topics.length), icon: TrendingUp, color: 'text-violet-600', bg: 'bg-violet-50' },
+          { label: 'Unanswered Questions', value: isDemo ? '5' : String(questions.length), icon: HelpCircle, color: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: 'Content Opportunities', value: isDemo ? '8' : String(topics.reduce((n, t) => n + t.suggestedIdeas.length, 0)), icon: Lightbulb, color: 'text-green-600', bg: 'bg-green-50' },
         ].map((stat) => (
           <div key={stat.label} className="bg-[#151b2e] border border-white/8 rounded-2xl p-5 shadow-xl shadow-black/10">
             <div className={`w-9 h-9 ${stat.bg} rounded-xl flex items-center justify-center mb-3`}>
@@ -97,8 +159,8 @@ export default function AudiencePage() {
         ))}
       </div>
 
-      {/* Sentiment + Keywords Row */}
-      <div className="grid lg:grid-cols-2 gap-6">
+      {/* Sentiment + Keywords Row (demo only: the AI analysis does not produce these yet) */}
+      {isDemo && <div className="grid lg:grid-cols-2 gap-6">
         {/* Sentiment */}
         <div className="bg-[#151b2e] border border-white/8 rounded-2xl p-5 shadow-xl shadow-black/10">
           <div className="flex items-center gap-2 mb-4">
@@ -155,7 +217,7 @@ export default function AudiencePage() {
             ))}
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Tabs */}
       <div className="bg-[#151b2e] border border-white/8 rounded-2xl shadow-xl shadow-black/10 overflow-hidden">
@@ -178,7 +240,7 @@ export default function AudiencePage() {
         {/* Topics Tab */}
         {activeTab === 'topics' && (
           <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
-            {DEMO_TOPICS.map((topic, i) => (
+            {topics.map((topic, i) => (
               <div key={topic._id} className="rounded-2xl border border-white/8 bg-[#10162a] p-4 transition hover:-translate-y-0.5 hover:border-violet-400/45 hover:bg-[#18213a] group">
                 <div className="flex h-full flex-col gap-4">
                   <div className="flex items-start gap-3 min-w-0">
@@ -243,7 +305,7 @@ export default function AudiencePage() {
                   className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400"
                 />
               </div>
-              <div className="relative">
+              {isDemo && <div className="relative">
                 <select
                   value={selectedVideo}
                   onChange={(e) => setSelectedVideo(e.target.value)}
@@ -255,7 +317,7 @@ export default function AudiencePage() {
                   ))}
                 </select>
                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
-              </div>
+              </div>}
             </div>
             <div className="space-y-2">
               {filteredQuestions.map((q) => {
@@ -268,9 +330,8 @@ export default function AudiencePage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-800">{q.text}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-slate-400">{q.author}</span>
-                        <span className="text-slate-300">·</span>
-                        <span className="text-xs text-slate-400">{q.likes} likes</span>
+                        {q.author && <span className="text-xs text-slate-400">{q.author}</span>}
+                        {q.likes !== undefined && <><span className="text-slate-300">·</span><span className="text-xs text-slate-400">{q.likes} likes</span></>}
                         {video && (
                           <>
                             <span className="text-slate-300">·</span>
@@ -301,7 +362,7 @@ export default function AudiencePage() {
           <div className="p-5">
             <p className="text-sm text-slate-500 mb-4">Content ideas clustered from audience comment requests:</p>
             <div className="grid sm:grid-cols-2 gap-3">
-              {DEMO_TOPICS.map((topic) => (
+              {topics.map((topic) => (
                 <div key={topic._id} className="border border-slate-200 rounded-xl p-4 hover:border-indigo-200 hover:shadow-sm transition-all group">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <h4 className="text-sm font-semibold text-slate-900">{topic.name}</h4>

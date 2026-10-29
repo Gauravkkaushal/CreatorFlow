@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
@@ -40,11 +40,23 @@ export function DashboardSidebar({ collapsed, onCollapsedChange }: { collapsed: 
   const { data: session } = useSession()
   const isDemo = isClientDemoMode()
 
-  const channelTitle = isDemo
-    ? DEMO_CHANNEL.channelTitle
-    : session?.user?.name
-    ? `${session.user.name}'s Channel`
-    : 'No channel connected'
+  const [channelTitle, setChannelTitle] = useState(
+    isDemo ? DEMO_CHANNEL.channelTitle : (session?.user?.name ? `${session.user.name}'s Channel` : 'No channel connected')
+  )
+
+  useEffect(() => {
+    if (isDemo) return
+    fetch('/api/channel')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data?.channelTitle) {
+          setChannelTitle(data.data.channelTitle)
+        } else if (session?.user?.name) {
+          setChannelTitle(session.user.name)
+        }
+      })
+      .catch(() => {})
+  }, [session, isDemo])
 
   const channelSubtitle = isDemo
     ? 'Connected to YouTube (Demo)'

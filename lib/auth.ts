@@ -5,27 +5,46 @@ import clientPromise from "@/lib/mongodb-client"
 
 const isDemoMode = process.env.DEMO_MODE === 'true'
 const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build' || process.env.npm_lifecycle_event === 'build'
+const hasMongo = Boolean(process.env.MONGODB_URI)
 
-// Validate required environment variables at runtime (non-demo mode only, outside static build analysis)
-if (!isDemoMode && !isBuildPhase) {
-  const required = [
-    'GOOGLE_CLIENT_ID',
-    'GOOGLE_CLIENT_SECRET',
-    'NEXTAUTH_SECRET',
-  ] as const
+// Without these Google rejects sign-in with "Missing required parameter: client_id"
+if (!isDemoMode && !isBuildPhase && (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET)) {
+  console.error('[auth] GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are not set in .env — Google sign-in will fail.')
+}
 
-  for (const key of required) {
-    if (!process.env[key]) {
-      throw new Error(
-        `Missing required environment variable: ${key}. ` +
-        'Set it in .env.local or set DEMO_MODE=true to run without real credentials.'
-      )
+async function refreshAccessToken(token: Record<string, unknown>) {
+  try {
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: process.env.GOOGLE_CLIENT_ID || '',
+        client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+        grant_type: 'refresh_token',
+        refresh_token: token.refreshToken as string,
+      }),
+      method: 'POST',
+    })
+
+    const refreshedTokens = await response.json()
+    if (!response.ok) throw refreshedTokens
+
+    return {
+      ...token,
+      accessToken: refreshedTokens.access_token,
+      accessTokenExpires: Date.now() + (refreshedTokens.expires_in ?? 3600) * 1000,
+      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
+    }
+  } catch (error) {
+    console.error('Error refreshing Google access token:', error)
+    return {
+      ...token,
+      error: 'RefreshAccessTokenError',
     }
   }
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  ...(isDemoMode ? {} : { adapter: MongoDBAdapter(clientPromise) }),
+  ...(hasMongo ? { adapter: MongoDBAdapter(clientPromise) } : {}),
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID ?? '',
@@ -47,7 +66,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   session: {
-    strategy: isDemoMode ? 'jwt' : 'database',
+    strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
@@ -61,13 +80,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.userId = user.id
       }
+
+      if (!token.accessTokenExpires || Date.now() < (token.accessTokenExpires as number)) {
+        return token
+      }
+
+      if (token.refreshToken) {
+        return refreshAccessToken(token)
+      }
+
       return token
     },
     async session({ session, token }) {
       if (token) {
-        session.user.id = token.userId as string ?? token.sub as string
+        session.user.id = (token.userId as string) ?? (token.sub as string)
         session.user.googleId = token.googleId as string
-        // NOTE: never expose raw tokens to client; they stay server-side only
+        session.accessToken = token.accessToken as string
+        session.error = token.error as string | undefined
       }
       return session
     },
