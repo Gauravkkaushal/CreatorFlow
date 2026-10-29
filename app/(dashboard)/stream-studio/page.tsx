@@ -20,9 +20,9 @@ import {
 } from 'lucide-react'
 import { DEMO_BROADCASTS, DEMO_TOPICS, isClientDemoMode } from '@/lib/demo-mode'
 import { EmptyState } from '@/components/dashboard/empty-state'
+import { useIdeas, useCreateIdea } from '@/lib/use-ideas'
 
 const isDemo = isClientDemoMode()
-const broadcasts = isDemo ? DEMO_BROADCASTS : []
 const audienceTopics = isDemo ? DEMO_TOPICS : []
 import { formatDate } from '@/lib/utils'
 
@@ -60,6 +60,22 @@ export default function StreamStudioPage() {
   const [streamTopic, setStreamTopic] = useState('')
   const [duration, setDuration] = useState(90)
   const [notice, setNotice] = useState<string | null>(null)
+  const [streamStart, setStreamStart] = useState('')
+  const ideas = useIdeas(!isDemo)
+  const createIdea = useCreateIdea()
+  // Live streams are saved as livestream ideas, so they also show on the calendar and planner
+  const broadcasts = isDemo
+    ? DEMO_BROADCASTS
+    : (ideas.data ?? []).filter((idea) => idea.contentType === 'livestream').map((idea) => ({
+        _id: idea._id,
+        title: idea.title,
+        description: idea.description ?? '',
+        scheduledStartTime: new Date(idea.scheduledDate ?? idea.createdAt),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        status: 'local' as const,
+        isDemo: false,
+        agenda: idea.outline,
+      }))
 
   const showNotice = (message: string) => {
     setNotice(message)
@@ -342,6 +358,16 @@ export default function StreamStudioPage() {
                 </div>
               )}
               <div>
+                <label htmlFor="stream-start" className="block text-xs font-semibold text-slate-700 mb-1.5">Date &amp; time{!isDemo && ' (required)'}</label>
+                <input
+                  id="stream-start"
+                  type="datetime-local"
+                  value={streamStart}
+                  onChange={(e) => setStreamStart(e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400"
+                />
+              </div>
+              <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">Duration: {duration} min</label>
                 <input
                   type="range"
@@ -357,19 +383,37 @@ export default function StreamStudioPage() {
                 </div>
               </div>
             </div>
+            {createIdea.error && <p role="alert" className="mx-5 rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-200">{createIdea.error.message}</p>}
             <div className="flex gap-3 p-5 border-t border-slate-100">
               <button onClick={() => setShowNewStream(false)} className="flex-1 px-4 py-2.5 border border-slate-200 text-sm text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
                 Cancel
               </button>
               <button
-                onClick={() => {
+                disabled={createIdea.isPending || (!isDemo && !streamStart)}
+                onClick={async () => {
                   if (!streamTitle.trim()) return showNotice('Add a stream title before scheduling.')
+                  if (!isDemo) {
+                    try {
+                      await createIdea.mutateAsync({
+                        title: streamTitle.trim().slice(0, 200),
+                        contentType: 'livestream',
+                        status: 'scheduled',
+                        description: streamDescription.slice(0, 1000),
+                        scheduledDate: new Date(streamStart).toISOString(),
+                        notes: `Duration: ${duration} min`,
+                        sourceTopicName: streamTopic || undefined,
+                      })
+                    } catch {
+                      return // createIdea.error is shown above the buttons
+                    }
+                    setStreamStart('')
+                  }
                   setShowNewStream(false)
                   showNotice(`“${streamTitle}” has been scheduled for your publishing calendar.`)
                 }}
-                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <Calendar className="w-4 h-4" /> Schedule Stream
+                <Calendar className="w-4 h-4" /> {createIdea.isPending ? 'Scheduling…' : 'Schedule Stream'}
               </button>
             </div>
           </div>

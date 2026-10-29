@@ -156,30 +156,79 @@ describe('POST /api/channel/sync', () => {
   })
 })
 
-// ─── /api/calendar (GET) ─────────────────────────────────────────────────────
-describe('GET /api/calendar', () => {
+// ─── /api/ideas (GET, POST, PATCH) ──────────────────────────────────────────
+// connection() needs a real Next request scope; it only opts the route out of prerendering
+jest.mock('next/server', () => ({ ...jest.requireActual('next/server'), connection: jest.fn(async () => {}) }))
+jest.mock('@/models/ContentIdea', () => {
+  const lean = jest.fn(async () => [])
+  return {
+    __esModule: true,
+    default: {
+      find: jest.fn(() => ({ sort: () => ({ limit: () => ({ lean }) }) })),
+      create: jest.fn(async (doc: Record<string, unknown>) => ({ toObject: () => ({ _id: 'new', ...doc }) })),
+      findOneAndUpdate: jest.fn(() => ({ lean: jest.fn(async () => null) })),
+    },
+  }
+})
+
+describe('/api/ideas', () => {
+  const USER_ID = '64b7f0c2a1b2c3d4e5f60718'
+  const IDEA_ID = '64b7f0c2a1b2c3d4e5f60719'
+  const { auth } = require('@/lib/auth') as { auth: jest.Mock }
+  const ContentIdea = require('@/models/ContentIdea').default as Record<'find' | 'create' | 'findOneAndUpdate', jest.Mock>
+
   beforeEach(() => {
-    const { auth } = require('@/lib/auth') as { auth: jest.Mock }
-    auth.mockResolvedValue({ user: { id: 'user1', name: 'Test' } })
+    auth.mockResolvedValue({ user: { id: USER_ID } })
+    Object.values(ContentIdea).forEach((fn) => fn.mockClear())
   })
 
   it('returns 401 when unauthenticated', async () => {
-    const { auth } = require('@/lib/auth') as { auth: jest.Mock }
     auth.mockResolvedValue(null)
-
-    const { GET } = await import('@/app/api/calendar/route')
-    const req = mockRequest('GET', 'http://localhost/api/calendar')
-    const res = await GET(req as never)
-    expect(res.status).toBe(401)
+    const { GET } = await import('@/app/api/ideas/route')
+    expect((await GET()).status).toBe(401)
   })
 
-  it('returns a success response with array data', async () => {
-    const { GET } = await import('@/app/api/calendar/route')
-    const req = mockRequest('GET', 'http://localhost/api/calendar')
-    const res = await GET(req as never)
+  it('lists only the signed-in user\'s ideas', async () => {
+    const { GET } = await import('@/app/api/ideas/route')
+    const res = await GET()
+    expect(res.status).toBe(200)
+    expect(ContentIdea.find).toHaveBeenCalledWith({ userId: USER_ID })
+  })
 
-    // May return 200 (demo) or 404 (live/no data) — not a 5xx
-    expect(res.status).toBeLessThan(500)
+  it('rejects an idea without a title', async () => {
+    const { POST } = await import('@/app/api/ideas/route')
+    const res = await POST(mockRequest('POST', 'http://localhost/api/ideas', { title: '   ' }) as never)
+    expect(res.status).toBe(400)
+    expect(ContentIdea.create).not.toHaveBeenCalled()
+  })
+
+  it('creates an idea owned by the user with a real Date', async () => {
+    const { POST } = await import('@/app/api/ideas/route')
+    const res = await POST(mockRequest('POST', 'http://localhost/api/ideas', {
+      title: 'Live Q&A', contentType: 'livestream', status: 'scheduled', scheduledDate: '2026-11-05T18:00:00.000Z',
+    }) as never)
+    expect(res.status).toBe(201)
+    const doc = ContentIdea.create.mock.calls[0][0]
+    expect(doc.userId).toBe(USER_ID)
+    expect(doc.scheduledDate).toEqual(new Date('2026-11-05T18:00:00.000Z'))
+  })
+
+  it('only updates ideas the user owns, and returns 404 otherwise', async () => {
+    const { PATCH } = await import('@/app/api/ideas/route')
+    const res = await PATCH(mockRequest('PATCH', 'http://localhost/api/ideas', { id: IDEA_ID, scheduledDate: null }) as never)
+    expect(res.status).toBe(404)
+    expect(ContentIdea.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: IDEA_ID, userId: USER_ID },
+      { scheduledDate: null },
+      expect.anything()
+    )
+  })
+
+  it('rejects an invalid idea id', async () => {
+    const { PATCH } = await import('@/app/api/ideas/route')
+    const res = await PATCH(mockRequest('PATCH', 'http://localhost/api/ideas', { id: 'nope', status: 'draft' }) as never)
+    expect(res.status).toBe(400)
+    expect(ContentIdea.findOneAndUpdate).not.toHaveBeenCalled()
   })
 })
 

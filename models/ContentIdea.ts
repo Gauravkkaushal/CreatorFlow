@@ -13,6 +13,8 @@ export interface IContentIdea extends Document {
   titleSuggestions: string[]
   outline: string[]
   draftDescription?: string
+  hook?: string
+  cta?: string
   keywords: string[]
   tags: string[]
   sourceTopicName?: string
@@ -46,6 +48,8 @@ const ContentIdeaSchema = new Schema<IContentIdea>(
     titleSuggestions: [{ type: String }],
     outline: [{ type: String }],
     draftDescription: { type: String },
+    hook: { type: String },
+    cta: { type: String },
     keywords: [{ type: String }],
     tags: [{ type: String }],
     sourceTopicName: { type: String },

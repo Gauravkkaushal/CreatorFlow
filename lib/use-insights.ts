@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { LiveInsights } from '@/app/api/audience/insights/route'
 
-async function call<T>(input: string, init?: RequestInit): Promise<T> {
+export async function apiCall<T>(input: string, init?: RequestInit): Promise<T> {
   const json = await (await fetch(input, init)).json()
   if (!json.success) throw new Error(json.error ?? 'Request failed')
   return json.data
@@ -13,7 +13,7 @@ async function call<T>(input: string, init?: RequestInit): Promise<T> {
 export function useInsights(enabled = true) {
   return useQuery({
     queryKey: ['insights'],
-    queryFn: () => call<LiveInsights | null>('/api/audience/insights'),
+    queryFn: () => apiCall<LiveInsights | null>('/api/audience/insights'),
     enabled,
   })
 }
@@ -22,7 +22,7 @@ export function useInsights(enabled = true) {
 export function useAnalyzeComments() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => call<{ message: string }>('/api/channel/sync', { method: 'POST' }),
+    mutationFn: () => apiCall<{ message: string }>('/api/channel/sync', { method: 'POST' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['insights'] }),
   })
 }
