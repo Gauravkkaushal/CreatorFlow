@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { isClientDemoMode } from '@/lib/demo-mode'
 import {
   User,
   Settings,
@@ -48,7 +49,7 @@ export default function SettingsPage() {
   // AI prefs
   const [selectedModel, setSelectedModel] = useState('gemini-1.5-flash')
   const [geminiKey, setGeminiKey] = useState('')
-  const [demoMode, setDemoMode] = useState(true)
+  const [demoMode, setDemoMode] = useState(isClientDemoMode())
   const [ideaCount, setIdeaCount] = useState(3)
 
   // Notifications

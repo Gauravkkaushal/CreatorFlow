@@ -11,7 +11,7 @@ import {
   Zap,
   Calendar,
 } from 'lucide-react'
-import { DEMO_CONTENT_IDEAS } from '@/lib/demo-mode'
+import { DEMO_CONTENT_IDEAS, isClientDemoMode } from '@/lib/demo-mode'
 import { formatDate } from '@/lib/utils'
 
 // ─── Calendar helpers ───────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ export default function CalendarPage() {
   const [currentYear, setCurrentYear] = useState(2026)
   const [currentMonth, setCurrentMonth] = useState(9) // October
   const [today, setToday] = useState<Date | null>(null)
-  const [events, setEvents] = useState<Event[]>(INITIAL_EVENTS)
+  const [events, setEvents] = useState<Event[]>(isClientDemoMode() ? INITIAL_EVENTS : [])
   const [weekAnchor, setWeekAnchor] = useState(new Date(2026, 9, 21))
 
   useEffect(() => {
@@ -364,7 +364,7 @@ export default function CalendarPage() {
                 </div>
               </div>
               {/* Quick add from ideas */}
-              {DEMO_CONTENT_IDEAS.length > 0 && (
+              {isClientDemoMode() && DEMO_CONTENT_IDEAS.length > 0 && (
                 <div>
                   <p className="text-xs text-slate-500 mb-1.5">Or pick from your ideas:</p>
                   <div className="space-y-1 max-h-24 overflow-y-auto">

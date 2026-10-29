@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { createPortal } from 'react-dom'
 import {
   Video,
@@ -22,7 +23,9 @@ import {
   Gauge,
   ExternalLink,
 } from 'lucide-react'
-import { DEMO_VIDEOS } from '@/lib/demo-mode'
+import { DEMO_VIDEOS, isClientDemoMode } from '@/lib/demo-mode'
+import { EmptyState } from '@/components/dashboard/empty-state'
+import type { YouTubeVideo } from '@/types'
 import { formatDate, formatNumber, formatDuration } from '@/lib/utils'
 
 // ─── SEO result type ─────────────────────────────────────────────────────────
@@ -32,7 +35,16 @@ interface SEOResult {
   description: string
 }
 
-type VideoItem = typeof DEMO_VIDEOS[number]
+type VideoItem = YouTubeVideo
+
+const isDemo = isClientDemoMode()
+
+async function fetchVideos(): Promise<VideoItem[]> {
+  const res = await fetch('/api/videos')
+  const json = await res.json()
+  if (!json.success) throw new Error(json.error ?? 'Failed to load videos')
+  return json.data
+}
 type AnalyticsTab = 'overview' | 'reach' | 'engagement' | 'audience'
 
 const ANALYTICS_TABS: { key: AnalyticsTab; label: string }[] = [
@@ -89,20 +101,22 @@ function AnalyticsChart({ points, color = '#ff0033' }: { points: number[]; color
 export default function VideoManagementPage() {
   const [isMounted, setIsMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [seoModal, setSeoModal] = useState<typeof DEMO_VIDEOS[0] | null>(null)
+  const [seoModal, setSeoModal] = useState<VideoItem | null>(null)
   const [generating, setGenerating] = useState(false)
   const [seoResult, setSeoResult] = useState<SEOResult | null>(null)
   const [activeTab, setActiveTab] = useState<'titles' | 'tags' | 'description'>('titles')
   const [analyticsModal, setAnalyticsModal] = useState<VideoItem | null>(null)
   const [analyticsTab, setAnalyticsTab] = useState<AnalyticsTab>('overview')
 
+  const { data: videos = [], isLoading, error } = useQuery({ queryKey: ['videos'], queryFn: fetchVideos })
+
   useEffect(() => setIsMounted(true), [])
 
-  const filteredVideos = DEMO_VIDEOS.filter((v) =>
+  const filteredVideos = videos.filter((v) =>
     !searchQuery || v.title.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const handleOptimize = (video: typeof DEMO_VIDEOS[0]) => {
+  const handleOptimize = (video: VideoItem) => {
     setSeoModal(video)
     setGenerating(true)
     setSeoResult(null)
@@ -165,18 +179,20 @@ Whether you're a beginner just starting out or an experienced developer looking 
           <p className="text-sm text-slate-500 mt-1">Manage published videos and optimize them with AI SEO</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs font-medium text-amber-800">
-            <Info className="w-3.5 h-3.5" /> Demo Data
-          </span>
+          {isDemo && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs font-medium text-amber-800">
+              <Info className="w-3.5 h-3.5" /> Demo Data
+            </span>
+          )}
         </div>
       </div>
 
       {/* Summary stats */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Published Videos', value: DEMO_VIDEOS.length.toString(), icon: Video, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-          { label: 'Total Views', value: formatNumber(DEMO_VIDEOS.reduce((s, v) => s + (v.viewCount ?? 0), 0)), icon: Eye, color: 'text-violet-600', bg: 'bg-violet-50' },
-          { label: 'Total Likes', value: formatNumber(DEMO_VIDEOS.reduce((s, v) => s + (v.likeCount ?? 0), 0)), icon: ThumbsUp, color: 'text-pink-600', bg: 'bg-pink-50' },
+          { label: 'Published Videos', value: videos.length.toString(), icon: Video, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+          { label: 'Total Views', value: formatNumber(videos.reduce((s, v) => s + (v.viewCount ?? 0), 0)), icon: Eye, color: 'text-violet-600', bg: 'bg-violet-50' },
+          { label: 'Total Likes', value: formatNumber(videos.reduce((s, v) => s + (v.likeCount ?? 0), 0)), icon: ThumbsUp, color: 'text-pink-600', bg: 'bg-pink-50' },
         ].map((stat) => (
           <div key={stat.label} className="flex items-center gap-3 rounded-xl border border-white/8 bg-[#151b2e] px-4 py-3 shadow-lg shadow-black/10">
             <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${stat.bg}`}>
@@ -203,6 +219,19 @@ Whether you're a beginner just starting out or an experienced developer looking 
       </div>
 
       {/* Video list */}
+      {isLoading && (
+        <div role="status" className="flex items-center justify-center gap-3 rounded-2xl border border-white/8 bg-[#151b2e] py-12 text-sm text-slate-400">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/15 border-t-violet-400" /> Loading your videos…
+        </div>
+      )}
+      {error && (
+        <div role="alert" className="rounded-2xl border border-red-500/25 bg-red-500/10 px-5 py-4 text-sm text-red-200">
+          {error.message} {error.message.includes('sign in') && <a href="/auth/signin" className="font-semibold underline">Sign in</a>}
+        </div>
+      )}
+      {!isLoading && !error && videos.length === 0 && (
+        <EmptyState icon={Video} title="No videos yet" description="Videos you upload to your YouTube channel will show up here." />
+      )}
       <div className="space-y-4">
         {filteredVideos.map((video) => {
           const engagementRate = video.viewCount
@@ -258,9 +287,10 @@ Whether you're a beginner just starting out or an experienced developer looking 
                     >
                       <Sparkles className="w-3.5 h-3.5" /> AI SEO Optimizer
                     </button>
-                    <button onClick={() => openAnalytics(video)} className="px-3 py-1.5 bg-white/8 hover:bg-white/12 border border-white/10 text-slate-200 text-xs font-medium rounded-lg transition-colors flex items-center gap-1">
+                    {/* Analytics are simulated; real numbers need the YouTube Analytics API */}
+                    {isDemo && <button onClick={() => openAnalytics(video)} className="px-3 py-1.5 bg-white/8 hover:bg-white/12 border border-white/10 text-slate-200 text-xs font-medium rounded-lg transition-colors flex items-center gap-1">
                       <BarChart3 className="w-3.5 h-3.5" /> Analytics
-                    </button>
+                    </button>}
                     <button onClick={() => window.open(`https://www.youtube.com/watch?v=${video.id}`, '_blank', 'noopener,noreferrer')} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-medium rounded-lg transition-colors flex items-center gap-1">
                       <Eye className="w-3.5 h-3.5" /> View
                     </button>

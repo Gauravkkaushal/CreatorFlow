@@ -82,6 +82,23 @@ class YouTubeDemoAdapter {
     const { comments } = await this.getVideoComments(videoId, { maxResults: 300 })
     return comments
   }
+
+  async getMyChannel(_accessToken?: string): Promise<ChannelInfo | null> {
+    await new Promise((r) => setTimeout(r, 200))
+    return {
+      channelId: DEMO_CHANNEL.channelId,
+      channelTitle: DEMO_CHANNEL.channelTitle,
+      channelDescription: DEMO_CHANNEL.channelDescription,
+      thumbnailUrl: DEMO_CHANNEL.thumbnailUrl,
+      subscriberCount: DEMO_CHANNEL.subscriberCount,
+      videoCount: DEMO_CHANNEL.videoCount,
+    }
+  }
+
+  async getMyVideos(maxResults = 25): Promise<YouTubeVideo[]> {
+    const { videos } = await this.getRecentVideos('', { maxResults })
+    return videos
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -89,25 +106,61 @@ class YouTubeDemoAdapter {
 // ─────────────────────────────────────────────
 
 class YouTubeLiveAdapter {
-  private apiKey: string
+  private apiKey?: string
   private BASE = 'https://www.googleapis.com/youtube/v3'
 
-  constructor(apiKey: string) {
+  constructor(apiKey?: string) {
     this.apiKey = apiKey
   }
 
-  private async get<T>(path: string, params: Record<string, string | number>): Promise<T> {
+  private async get<T>(path: string, params: Record<string, string | number>, token?: string): Promise<T> {
     const url = new URL(this.BASE + path)
-    url.searchParams.set('key', this.apiKey)
+    if (this.apiKey) {
+      url.searchParams.set('key', this.apiKey)
+    }
     for (const [k, v] of Object.entries(params)) {
       url.searchParams.set(k, String(v))
     }
-    const res = await fetch(url.toString(), { next: { revalidate: 300 } })
+    const headers: Record<string, string> = {}
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    // Per-user (token) responses must never land in the shared fetch cache
+    const res = await fetch(url.toString(), token ? { headers, cache: 'no-store' } : { next: { revalidate: 300 } })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
       throw new Error(`YouTube API error ${res.status}: ${JSON.stringify(err)}`)
     }
     return res.json() as T
+  }
+
+  async getMyChannel(accessToken: string): Promise<ChannelInfo | null> {
+    const data = await this.get<{
+      items?: Array<{
+        id: string
+        snippet: {
+          title: string
+          description: string
+          thumbnails: { default: { url: string }; medium?: { url: string }; high?: { url: string } }
+        }
+        statistics: { subscriberCount: string; videoCount: string }
+      }>
+    }>('/channels', {
+      part: 'snippet,statistics',
+      mine: 'true',
+    }, accessToken)
+
+    const item = data.items?.[0]
+    if (!item) return null
+
+    return {
+      channelId: item.id,
+      channelTitle: item.snippet.title,
+      channelDescription: item.snippet.description || '',
+      thumbnailUrl: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default.url,
+      subscriberCount: parseInt(item.statistics?.subscriberCount || '0', 10),
+      videoCount: parseInt(item.statistics?.videoCount || '0', 10),
+    }
   }
 
   async getChannelInfo(channelId: string): Promise<ChannelInfo> {
@@ -156,10 +209,30 @@ class YouTubeLiveAdapter {
       nextPageToken?: string
     }>('/search', searchParams)
 
-    const videoIds = searchData.items.map((i) => i.id.videoId).join(',')
-    if (!videoIds) return { videos: [] }
+    const videos = await this.getVideoDetails(searchData.items.map((i) => i.id.videoId))
+    return { videos, nextPageToken: searchData.nextPageToken }
+  }
 
-    // Step 2 — fetch full video details
+  /** Videos of the signed-in user's own channel, newest first, including private and unlisted ones. */
+  async getMyVideos(accessToken: string, maxResults = 25): Promise<YouTubeVideo[]> {
+    // Uploads playlist costs 2 quota units vs 100 for /search
+    const channels = await this.get<{
+      items?: Array<{ contentDetails: { relatedPlaylists: { uploads: string } } }>
+    }>('/channels', { part: 'contentDetails', mine: 'true' }, accessToken)
+
+    const uploads = channels.items?.[0]?.contentDetails.relatedPlaylists.uploads
+    if (!uploads) return []
+
+    const playlist = await this.get<{
+      items?: Array<{ contentDetails: { videoId: string } }>
+    }>('/playlistItems', { part: 'contentDetails', playlistId: uploads, maxResults }, accessToken)
+
+    return this.getVideoDetails(playlist.items?.map((i) => i.contentDetails.videoId) ?? [], accessToken)
+  }
+
+  private async getVideoDetails(ids: string[], token?: string): Promise<YouTubeVideo[]> {
+    if (!ids.length) return []
+
     const videoData = await this.get<{
       items: Array<{
         id: string
@@ -177,10 +250,10 @@ class YouTubeLiveAdapter {
       }>
     }>('/videos', {
       part: 'snippet,statistics,contentDetails,status',
-      id: videoIds,
-    })
+      id: ids.join(','),
+    }, token)
 
-    const videos: YouTubeVideo[] = videoData.items.map((v) => ({
+    return videoData.items.map((v) => ({
       id: v.id,
       title: v.snippet.title,
       description: v.snippet.description,
@@ -194,8 +267,6 @@ class YouTubeLiveAdapter {
       categoryId: v.snippet.categoryId,
       duration: v.contentDetails.duration,
     }))
-
-    return { videos, nextPageToken: searchData.nextPageToken }
   }
 
   async getVideoComments(
@@ -287,6 +358,23 @@ export function getYouTubeService(): YouTubeLiveAdapter | YouTubeDemoAdapter {
   return _youtubeAdapter
 }
 
+export const getMyChannel = async (accessToken?: string): Promise<ChannelInfo | null> => {
+  if (isDemoMode()) {
+    return new YouTubeDemoAdapter().getMyChannel()
+  }
+  if (!accessToken) return null
+  const adapter = new YouTubeLiveAdapter(process.env.YOUTUBE_API_KEY)
+  return adapter.getMyChannel(accessToken)
+}
+
+export const getMyVideos = async (accessToken?: string, maxResults?: number): Promise<YouTubeVideo[]> => {
+  if (isDemoMode()) {
+    return new YouTubeDemoAdapter().getMyVideos(maxResults)
+  }
+  if (!accessToken) return []
+  return new YouTubeLiveAdapter(process.env.YOUTUBE_API_KEY).getMyVideos(accessToken, maxResults)
+}
+
 // Named exports
 export const getChannelInfo = (channelId: string) =>
   getYouTubeService().getChannelInfo(channelId)
@@ -302,6 +390,7 @@ export const getAllCommentsForVideo = (videoId: string, limit?: number) =>
 
 export const youtubeService = {
   getChannelInfo: (channelId: string) => getYouTubeService().getChannelInfo(channelId),
+  getMyChannel: (accessToken?: string) => getMyChannel(accessToken),
   getRecentVideos: (channelId: string, options?: FetchVideosOptions) => getYouTubeService().getRecentVideos(channelId, options),
   getVideoComments: (videoId: string, options?: FetchCommentsOptions) => getYouTubeService().getVideoComments(videoId, options),
   getAllCommentsForVideo: (videoId: string, limit?: number) => getYouTubeService().getAllCommentsForVideo(videoId, limit),
