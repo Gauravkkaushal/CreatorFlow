@@ -14,6 +14,8 @@ import {
 import { DEMO_BROADCASTS, DEMO_CONTENT_IDEAS, DEMO_TOPICS, isDemoMode } from '@/lib/demo-mode'
 import { formatDate, formatNumber } from '@/lib/utils'
 import { auth } from '@/lib/auth'
+import { getLatestAnalysis } from '@/lib/analysis'
+import type { IAudienceTopic } from '@/models/AudienceAnalysis'
 import { getMyChannel, getMyVideos } from '@/services/youtube'
 import { LiveAnalysisDemo } from '@/components/dashboard/live-analysis-demo'
 import { EmptyState } from '@/components/dashboard/empty-state'
@@ -56,6 +58,16 @@ async function LiveHome() {
         return [null, []] as const
       })
     : ([null, []] as const)
+
+  const analysis = await getLatestAnalysis(session?.user?.id).catch((err) => {
+    console.error('[dashboard] analysis load failed', err)
+    return null
+  })
+  // Don't trust the model's sort order
+  const opportunity = analysis?.topics.reduce<IAudienceTopic | undefined>(
+    (best, t) => (!best || t.priorityScore > best.priorityScore ? t : best),
+    undefined
+  )
 
   return (
     <div className="mx-auto max-w-7xl space-y-7 animate-fade-in">
@@ -118,8 +130,52 @@ async function LiveHome() {
         </section>
       )}
 
+      {opportunity && (
+        <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#151b2e] p-6 md:p-8">
+          <div className="inline-flex items-center gap-2 rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1 text-xs font-semibold text-violet-200">
+            <Sparkles className="h-3.5 w-3.5" /> Best opportunity from your comments
+          </div>
+          <div className="mt-5 grid gap-8 lg:grid-cols-[1.2fr_.8fr] lg:items-center">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight text-white">{opportunity.name}</h2>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">{opportunity.summary}</p>
+              <div className="mt-5 flex flex-wrap gap-2 text-xs">
+                <span className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 font-medium text-slate-200">{opportunity.commentCount} viewer mentions</span>
+                <span className="rounded-full border border-emerald-300/15 bg-emerald-400/10 px-3 py-1.5 font-medium text-emerald-200">Demand score {opportunity.priorityScore}/100</span>
+              </div>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link href={`/content-planner?topic=${encodeURIComponent(opportunity.name)}`} className="inline-flex items-center gap-2 rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-400">
+                  <WandSparkles className="h-4 w-4" /> Create this video <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link href="/audience" className="inline-flex items-center gap-2 rounded-xl border border-white/12 px-4 py-2.5 text-sm font-medium text-slate-200 transition hover:bg-white/[0.06]">
+                  See all feedback
+                </Link>
+              </div>
+            </div>
+            {(opportunity.representativeComments[0] || opportunity.commonQuestions[0]) && (
+              <div className="rounded-2xl border border-white/10 bg-black/15 p-5">
+                {opportunity.representativeComments[0] && (
+                  <>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-violet-200">Viewer signal</p>
+                    <blockquote className="mt-3 text-base leading-7 text-white">“{opportunity.representativeComments[0]}”</blockquote>
+                  </>
+                )}
+                {opportunity.commonQuestions[0] && (
+                  <div className="mt-4 border-t border-white/10 pt-4">
+                    <p className="text-xs text-slate-400">Most asked question</p>
+                    <p className="mt-1 text-sm font-medium text-white">{opportunity.commonQuestions[0]}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2">
-        <EmptyState icon={MessageCircle} title="No audience insights yet" description="Comment analysis is coming next: sync your channel to find what your viewers are asking for." href="/integrations" cta="Go to integrations" />
+        {!opportunity && (
+          <EmptyState icon={MessageCircle} title="No audience insights yet" description="Analyze your latest comments to find what your viewers keep asking for." href="/audience" cta="Analyze comments" />
+        )}
         <EmptyState icon={WandSparkles} title="Plan your first video" description="Turn an idea into a title, outline and script with the AI planner." href="/content-planner" cta="Open content planner" />
       </div>
     </div>

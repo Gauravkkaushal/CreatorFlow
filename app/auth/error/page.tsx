@@ -2,7 +2,8 @@ import { Suspense } from 'react'
 import Link from 'next/link'
 
 const MESSAGES: Record<string, string> = {
-  Configuration: 'Sign-in is misconfigured on the server. Check the Google OAuth credentials in .env.',
+  // Auth.js also reports database (adapter) failures as Configuration
+  Configuration: 'Sign-in is misconfigured on the server. Check the Google OAuth credentials and MONGODB_URI in .env; the server log has the exact cause.',
   AccessDenied: 'Access was denied. Make sure you approved the requested Google permissions.',
   Verification: 'The sign-in link is no longer valid. Please try again.',
 }

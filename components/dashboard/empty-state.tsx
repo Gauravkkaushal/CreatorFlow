@@ -7,12 +7,14 @@ export function EmptyState({
   description,
   href,
   cta,
+  children,
 }: {
   icon: LucideIcon
   title: string
   description: string
   href?: string
   cta?: string
+  children?: React.ReactNode
 }) {
   return (
     <div className="flex flex-col items-center rounded-2xl border border-dashed border-white/12 bg-[#151b2e] px-6 py-12 text-center">
@@ -26,6 +28,7 @@ export function EmptyState({
           {cta}
         </Link>
       )}
+      {children}
     </div>
   )
 }

@@ -29,12 +29,13 @@ export interface AIProvider {
 // Helpers
 // ============================================================
 
-const AI_TIMEOUT_MS = 30_000
+// Comment analysis of ~250 comments can take longer than 30 s
+const AI_TIMEOUT_MS = 60_000
 
 async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout>
   const timeout = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error(`AI request timed out after ${ms}ms`)), ms)
+    timeoutId = setTimeout(() => reject(new Error(`AI request timed out after ${ms / 1000}s. Try again, or set GEMINI_MODEL in .env to a faster model.`)), ms)
   })
   try {
     const result = await Promise.race([promise, timeout])
@@ -103,24 +104,32 @@ function parseJSON<T>(text: string): T | null {
 // Gemini Adapter
 // ============================================================
 
+const GENERATION_CONFIG = {
+  temperature: 0.7,
+  topP: 0.95,
+  // Thinking models spend output tokens on reasoning; 4096 truncated the JSON
+  maxOutputTokens: 16384,
+}
+
 class GeminiAdapter implements AIProvider {
   private model: GenerativeModel
 
   constructor(apiKey: string) {
     const genAI = new GoogleGenerativeAI(apiKey)
     this.model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      generationConfig: {
-        temperature: 0.7,
-        topP: 0.95,
-        maxOutputTokens: 4096,
-      },
+      // Flash-Lite: thinking models (e.g. gemini-3.8-flash) took >60 s on 250 comments. Override with GEMINI_MODEL.
+      model: process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
+      generationConfig: GENERATION_CONFIG,
     })
   }
 
-  private async generate(prompt: string): Promise<string> {
+  private async generate(prompt: string, json = false): Promise<string> {
+    // A request-level generationConfig replaces the model's, so pass the full config
+    const request = json
+      ? { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { ...GENERATION_CONFIG, responseMimeType: 'application/json' } }
+      : prompt
     const result = await withTimeout(
-      retry(() => this.model.generateContent(prompt)),
+      retry(() => this.model.generateContent(request)),
       AI_TIMEOUT_MS
     )
     return result.response.text()
@@ -176,7 +185,7 @@ Return JSON in this exact format:
 
 Return at most 8 topics. Sort by priorityScore descending. Output JSON only, no markdown.`
 
-    const raw = await this.generate(prompt)
+    const raw = await this.generate(prompt, true)
     const parsed = parseJSON<unknown>(raw)
     const validated = AnalysisOutputSchema.safeParse(parsed)
 
@@ -446,12 +455,14 @@ export function getAIProvider(): AIProvider {
   if (_aiProvider) return _aiProvider
 
   const apiKey = process.env.GEMINI_API_KEY
-  const isDemoMode = process.env.DEMO_MODE === 'true' || !apiKey
 
-  if (isDemoMode) {
+  if (process.env.DEMO_MODE === 'true') {
     _aiProvider = new DemoAdapter()
-  } else {
+  } else if (apiKey) {
     _aiProvider = new GeminiAdapter(apiKey)
+  } else {
+    // Falling back to demo output here would save fake insights as the user's real data
+    throw new Error('GEMINI_API_KEY is not set. Add it to .env to use AI features.')
   }
 
   return _aiProvider
