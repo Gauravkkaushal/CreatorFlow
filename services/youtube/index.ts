@@ -400,7 +400,6 @@ export const getMyVideos = async (accessToken?: string, maxResults?: number): Pr
   if (!accessToken) return []
   return new YouTubeLiveAdapter(process.env.YOUTUBE_API_KEY).getMyVideos(accessToken, maxResults)
 }
-}
 
 // Named exports
 export const getChannelInfo = (channelId: string) =>
