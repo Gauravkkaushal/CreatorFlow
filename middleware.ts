@@ -28,9 +28,12 @@ export function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
-  // Allow unauthenticated preview of workspace UI pages in demo mode
-  // while keeping API routes protected
-  if (isDemoMode && !pathname.startsWith('/api')) {
+  // Allow unauthenticated preview of workspace UI pages and demo-enabled script generation in demo mode,
+  // while keeping other API routes protected
+  if (
+    isDemoMode &&
+    (!pathname.startsWith('/api') || pathname === '/api/ai/generate-script')
+  ) {
     return NextResponse.next()
   }
 
