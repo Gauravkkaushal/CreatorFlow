@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   ArrowRight,
@@ -75,6 +75,7 @@ export default function ContentPlannerPage() {
   const [scriptResult, setScriptResult] = useState<ScriptResult | null>(null)
   const [scriptError, setScriptError] = useState<string | null>(null)
   const [draggedProjectId, setDraggedProjectId] = useState<string | null>(null)
+  const activeRequestRef = useRef('')
   const selectedTemplate = CREATOR_TEMPLATES.find((item) => item.id === templateId) ?? CREATOR_TEMPLATES[0]
 
   useEffect(() => {
@@ -109,6 +110,7 @@ export default function ContentPlannerPage() {
       }, ...current])
       setTopic('')
       setScriptResult(null)
+      activeRequestRef.current = ''
       setGenerating(false)
       setShowGenerator(false)
     }, 700)
@@ -118,19 +120,32 @@ export default function ContentPlannerPage() {
     if (!topic.trim()) return
     setGenerating(true)
     setScriptError(null)
+    const currentTopic = topic.trim()
+    const currentTemplateId = templateId
+    const currentLanguage = writingLanguage
+    const requestId = `${currentTopic}|${currentTemplateId}|${currentLanguage}`
+    activeRequestRef.current = requestId
+
     try {
-      const title = `${topic.trim()} — ${selectedTemplate.title}`
+      const title = `${currentTopic} — ${selectedTemplate.title}`
       const response = await fetch('/api/ai/generate-script', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, keywords: topic.trim().split(/\s+/).slice(0, 5), language: writingLanguage }),
+        body: JSON.stringify({ title, keywords: currentTopic.split(/\s+/).slice(0, 5), language: currentLanguage }),
       })
       const payload = await response.json()
       if (!response.ok || !payload.success) throw new Error(payload.error || 'Could not generate your content')
-      setScriptResult(payload.data)
+      // Discard responses for superseded generator inputs
+      if (activeRequestRef.current === requestId) {
+        setScriptResult(payload.data)
+      }
     } catch (error) {
-      setScriptError(error instanceof Error ? error.message : 'Could not generate your content')
+      if (activeRequestRef.current === requestId) {
+        setScriptError(error instanceof Error ? error.message : 'Could not generate your content')
+      }
     } finally {
-      setGenerating(false)
+      if (activeRequestRef.current === requestId) {
+        setGenerating(false)
+      }
     }
   }
 
@@ -202,11 +217,11 @@ export default function ContentPlannerPage() {
               <button onClick={() => setShowGenerator(false)} className="rounded-lg p-1.5 text-slate-500 hover:bg-white/5 hover:text-white"><X className="h-5 w-5" /></button>
             </div>
             <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
-              <div><label className="text-xs font-semibold text-slate-300">What should this video be about?</label><input autoFocus value={topic} onChange={(event) => { setTopic(event.target.value); setScriptResult(null) }} placeholder="e.g. JWT authentication for beginners" className="mt-2 w-full rounded-xl border border-white/10 bg-[#0b1020] px-3 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-violet-400/60 focus:ring-2 focus:ring-violet-400/15" /></div>
-              <div><p className="text-xs font-semibold text-slate-300">Audience signals</p><div className="mt-2 flex flex-wrap gap-2">{DEMO_TOPICS.map((audienceTopic) => <button key={audienceTopic._id} onClick={() => setTopic(audienceTopic.name)} className={'rounded-lg border px-2.5 py-1.5 text-[11px] transition ' + (topic === audienceTopic.name ? 'border-violet-400 bg-violet-500/20 text-white' : 'border-white/10 bg-white/[0.03] text-slate-400 hover:text-white')}>{audienceTopic.name}</button>)}</div></div>
-              {!scriptResult && <div><p className="text-xs font-semibold text-slate-300">1. Choose a creator template</p><div className="mt-2 grid gap-2 sm:grid-cols-2">{CREATOR_TEMPLATES.map((template) => <button key={template.id} onClick={() => { setTemplateId(template.id); setScriptResult(null) }} className={'rounded-xl border p-3 text-left transition ' + (templateId === template.id ? 'border-violet-400 bg-violet-500/15' : 'border-white/10 bg-white/[0.03] hover:border-white/25')}><p className="text-xs font-semibold text-white">{template.title}</p><p className="mt-1 text-[10px] leading-4 text-slate-400">{template.hint}</p></button>)}</div></div>}
+              <div><label className="text-xs font-semibold text-slate-300">What should this video be about?</label><input autoFocus value={topic} onChange={(event) => { setTopic(event.target.value); setScriptResult(null); activeRequestRef.current = '' }} placeholder="e.g. JWT authentication for beginners" className="mt-2 w-full rounded-xl border border-white/10 bg-[#0b1020] px-3 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-violet-400/60 focus:ring-2 focus:ring-violet-400/15" /></div>
+              <div><p className="text-xs font-semibold text-slate-300">Audience signals</p><div className="mt-2 flex flex-wrap gap-2">{DEMO_TOPICS.map((audienceTopic) => <button key={audienceTopic._id} onClick={() => { setTopic(audienceTopic.name); setScriptResult(null); activeRequestRef.current = '' }} className={'rounded-lg border px-2.5 py-1.5 text-[11px] transition ' + (topic === audienceTopic.name ? 'border-violet-400 bg-violet-500/20 text-white' : 'border-white/10 bg-white/[0.03] text-slate-400 hover:text-white')}>{audienceTopic.name}</button>)}</div></div>
+              {!scriptResult && <div><p className="text-xs font-semibold text-slate-300">1. Choose a creator template</p><div className="mt-2 grid gap-2 sm:grid-cols-2">{CREATOR_TEMPLATES.map((template) => <button key={template.id} onClick={() => { setTemplateId(template.id); setScriptResult(null); activeRequestRef.current = '' }} className={'rounded-xl border p-3 text-left transition ' + (templateId === template.id ? 'border-violet-400 bg-violet-500/15' : 'border-white/10 bg-white/[0.03] hover:border-white/25')}><p className="text-xs font-semibold text-white">{template.title}</p><p className="mt-1 text-[10px] leading-4 text-slate-400">{template.hint}</p></button>)}</div></div>}
               {scriptResult && <div className="max-h-80 overflow-y-auto rounded-xl border border-violet-400/25 bg-violet-500/[0.06] p-4 pr-3"><p className="sticky top-0 bg-[#1a2038] pb-2 text-xs font-semibold text-violet-200">{selectedTemplate.title} · {writingLanguage === 'hinglish' ? 'Hinglish' : 'English'} draft</p><div className="mt-1 grid gap-3 text-xs leading-5 text-slate-300"><div><p className="font-semibold text-white">Hook</p><p>{scriptResult.hook}</p></div><div><p className="font-semibold text-white">Description</p><p className="whitespace-pre-line">{scriptResult.description}</p></div><div><p className="font-semibold text-white">Script flow</p><ol className="mt-1 space-y-1">{scriptResult.outline.map((item, index) => <li key={item}>{index + 1}. {item}</li>)}</ol></div><div><p className="font-semibold text-white">CTA</p><p>{scriptResult.cta}</p></div></div></div>}
-              <div><p className="text-xs font-semibold text-slate-300">{scriptResult ? 'Change language or regenerate' : '2. Choose writing language'}</p><div className="mt-2 flex gap-2"><button onClick={() => { setWritingLanguage('english'); setScriptResult(null) }} className={'rounded-lg px-3 py-2 text-xs font-semibold transition ' + (writingLanguage === 'english' ? 'bg-violet-500 text-white' : 'bg-white/[0.05] text-slate-400')}>English</button><button onClick={() => { setWritingLanguage('hinglish'); setScriptResult(null) }} className={'rounded-lg px-3 py-2 text-xs font-semibold transition ' + (writingLanguage === 'hinglish' ? 'bg-violet-500 text-white' : 'bg-white/[0.05] text-slate-400')}>Hinglish</button><button onClick={generateWriting} disabled={!topic.trim() || generating} className="ml-auto inline-flex items-center gap-1 rounded-lg border border-violet-400/50 px-3 py-2 text-xs font-semibold text-violet-200 hover:bg-violet-500/15 disabled:opacity-40"><Sparkles className="h-3.5 w-3.5" /> {generating ? 'Writing…' : 'Generate script'}</button></div></div>
+              <div><p className="text-xs font-semibold text-slate-300">{scriptResult ? 'Change language or regenerate' : '2. Choose writing language'}</p><div className="mt-2 flex gap-2"><button onClick={() => { setWritingLanguage('english'); setScriptResult(null); activeRequestRef.current = '' }} className={'rounded-lg px-3 py-2 text-xs font-semibold transition ' + (writingLanguage === 'english' ? 'bg-violet-500 text-white' : 'bg-white/[0.05] text-slate-400')}>English</button><button onClick={() => { setWritingLanguage('hinglish'); setScriptResult(null); activeRequestRef.current = '' }} className={'rounded-lg px-3 py-2 text-xs font-semibold transition ' + (writingLanguage === 'hinglish' ? 'bg-violet-500 text-white' : 'bg-white/[0.05] text-slate-400')}>Hinglish</button><button onClick={generateWriting} disabled={!topic.trim() || generating} className="ml-auto inline-flex items-center gap-1 rounded-lg border border-violet-400/50 px-3 py-2 text-xs font-semibold text-violet-200 hover:bg-violet-500/15 disabled:opacity-40"><Sparkles className="h-3.5 w-3.5" /> {generating ? 'Writing…' : 'Generate script'}</button></div></div>
               {scriptError && <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{scriptError}</p>}
             </div>
             <div className="shrink-0 flex gap-3 border-t border-white/8 bg-[#151b2e] p-5">

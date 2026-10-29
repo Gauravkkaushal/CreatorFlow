@@ -56,13 +56,14 @@ const nextConfig: NextConfig = {
           {
             // Strict CSP - locks down script/style sources to same-origin.
             // 'unsafe-inline' for styles is required by Tailwind CSS v4.
+            // Allows Google Fonts stylesheets and font binaries used in globals.css.
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-              "style-src 'self' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: blob: https://i.ytimg.com https://yt3.ggpht.com https://*.googleusercontent.com https://ui-avatars.com https://picsum.photos",
-              "font-src 'self'",
+              "font-src 'self' https://fonts.gstatic.com",
               "connect-src 'self' https://generativelanguage.googleapis.com https://www.googleapis.com",
               "frame-src 'none'",
               "object-src 'none'",

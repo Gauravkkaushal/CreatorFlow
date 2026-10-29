@@ -54,7 +54,7 @@ All of these areas have been systematically redesigned and verified. The codebas
 ## 3. Deep-Dive: Security & Authentication Hardening
 
 ### The Problem
-In [`middleware.ts`](file:///C:/Users/gaura/CreatorFlow/middleware.ts), the demo access check was executed before inspecting session cookies:
+In [`middleware.ts`](./middleware.ts), the demo access check was executed before inspecting session cookies:
 ```typescript
 // BEFORE: Unsafe early return
 const isDemo = process.env.DEMO_MODE === 'true'
@@ -65,9 +65,9 @@ if (isDemo) {
 If deployed with `DEMO_MODE=true` for demonstration, any external bot or visitor could call `/api/calendar` (POST, PUT, DELETE) and mutate data or spam AI endpoints without authenticating. Furthermore, unauthenticated requests to `/api/*` were redirected with an HTML 307 redirect instead of returning a proper JSON 401 response.
 
 ### The Solution
-We updated [`middleware.ts`](file:///C:/Users/gaura/CreatorFlow/middleware.ts) and [`lib/auth.ts`](file:///C:/Users/gaura/CreatorFlow/lib/auth.ts):
+We updated [`middleware.ts`](./middleware.ts) and [`lib/auth.ts`](./lib/auth.ts):
 - API routes now immediately receive a `{ success: false, error: 'Unauthorized' }` JSON payload with HTTP status 401.
-- In [`lib/auth.ts`](file:///C:/Users/gaura/CreatorFlow/lib/auth.ts), runtime environment validation guards verify that `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `NEXTAUTH_SECRET` are defined when running in live mode, preventing confusing runtime OAuth errors on first sign-in attempt.
+- In [`lib/auth.ts`](./lib/auth.ts), runtime environment validation guards verify that `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `NEXTAUTH_SECRET` are defined when running in live mode, preventing confusing runtime OAuth errors on first sign-in attempt.
 
 ```typescript
 // AFTER: Safe API rejection and clear token checks
@@ -91,7 +91,7 @@ if (!token) {
 ## 4. Deep-Dive: Database Resilience & Next.js Build-Time Safety
 
 ### The Problem
-In [`lib/mongodb-client.ts`](file:///C:/Users/gaura/CreatorFlow/lib/mongodb-client.ts), missing configuration was handled by passing a null value disguised as a `MongoClient`:
+In [`lib/mongodb-client.ts`](./lib/mongodb-client.ts), missing configuration was handled by passing a null value disguised as a `MongoClient`:
 ```typescript
 // BEFORE: Dangerous type cast and unhandled throw
 if (!uri) {
@@ -101,7 +101,7 @@ if (!uri) {
 When we introduced an explicit `throw new Error(...)` for missing `MONGODB_URI`, `next build` failed during page data collection because Next.js build worker threads evaluate API route modules during prerendering when environment variables might not be present.
 
 ### The Solution
-We refactored [`lib/mongodb-client.ts`](file:///C:/Users/gaura/CreatorFlow/lib/mongodb-client.ts) to return an explicitly rejected promise with a `.catch()` suppressor:
+We refactored [`lib/mongodb-client.ts`](./lib/mongodb-client.ts) to return an explicitly rejected promise with a `.catch()` suppressor:
 ```typescript
 // AFTER: Resilient promise that fails on await, not on module import
 if (!uri) {
@@ -122,7 +122,7 @@ This guarantees:
 ## 5. Deep-Dive: API Validation & Mass Assignment Prevention
 
 ### The Problem
-In [`app/api/calendar/route.ts`](file:///C:/Users/gaura/CreatorFlow/app/api/calendar/route.ts), the `POST` and `PUT` handlers accepted arbitrary body objects:
+In [`app/api/calendar/route.ts`](./app/api/calendar/route.ts), the `POST` and `PUT` handlers accepted arbitrary body objects:
 ```typescript
 // BEFORE: Vulnerable to mass assignment and type corruption
 const body = await request.json()
@@ -158,7 +158,7 @@ Sensitive system fields (`_id`, `userId`, `isDemo`, `createdAt`) are completely 
 ## 6. Deep-Dive: Security Headers & Content-Security-Policy
 
 ### The Problem
-[`next.config.ts`](file:///C:/Users/gaura/CreatorFlow/next.config.ts) configured only basic headers (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`). It lacked a `Content-Security-Policy` (CSP) and `Permissions-Policy`.
+[`next.config.ts`](./next.config.ts) configured only basic headers (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`). It lacked a `Content-Security-Policy` (CSP) and `Permissions-Policy`.
 
 ### The Solution
 We added comprehensive security headers tailored to CreatorFlow's operational requirements:
@@ -191,7 +191,7 @@ This restricts outbound connections strictly to authorized Google APIs and block
 ## 7. Deep-Dive: Logic Bug Fixes & Boundary Edge Cases
 
 ### The Problem
-In [`lib/utils.ts`](file:///C:/Users/gaura/CreatorFlow/lib/utils.ts), the `formatNumber` utility contained an off-by-rounding bug:
+In [`lib/utils.ts`](./lib/utils.ts), the `formatNumber` utility contained an off-by-rounding bug:
 ```typescript
 // BEFORE: 999_999 rounded to "1000K"
 if (abs >= 1_000) {
@@ -200,7 +200,7 @@ if (abs >= 1_000) {
   return `${parseFloat(val.toFixed(1))}K` // "1000.0" -> "1000K" (Incorrect!)
 }
 ```
-Furthermore, [`tests/utils/format.test.ts`](file:///C:/Users/gaura/CreatorFlow/tests/utils/format.test.ts) contained:
+Furthermore, [`tests/utils/format.test.ts`](./tests/utils/format.test.ts) contained:
 ```typescript
 expect(formatNumber(999_999)).toBe('1000K') // The test asserted the bug as expected behavior!
 ```
@@ -225,7 +225,7 @@ if (abs >= 1_000) {
 ## 8. Deep-Dive: Test Hygiene & Adapter Isolation
 
 ### The Problem
-[`services/ai/index.ts`](file:///C:/Users/gaura/CreatorFlow/services/ai/index.ts) and [`services/youtube/index.ts`](file:///C:/Users/gaura/CreatorFlow/services/youtube/index.ts) initialized singleton adapters in module scope:
+[`services/ai/index.ts`](./services/ai/index.ts) and [`services/youtube/index.ts`](./services/youtube/index.ts) initialized singleton adapters in module scope:
 ```typescript
 let _aiProvider: AIProvider | null = null
 export function getAIProvider(): AIProvider {
@@ -249,8 +249,8 @@ This allows unit tests to restore fresh provider state in `beforeEach()` blocks,
 1. **`LICENSE` (MIT)**: Added the official MIT license specifying copyright year (2026) and owner.
 2. **`.env.example`**: Created a documented environment template with clear separation between demo mode and live production keys. Updated `.gitignore` with `!.env.example` so it is tracked in Git.
 3. **Ignored Auto-Generated Files**: Added `AGENTS.md` (re-generated continuously by Next.js dev server) to `.gitignore` and removed it from git tracking.
-4. **Clean Project Root**: Moved internal development scratchpad `task.md` to [`.github/DEVELOPMENT.md`](file:///C:/Users/gaura/CreatorFlow/.github/DEVELOPMENT.md).
-5. **Accurate Documentation**: Replaced generic `<repo-url>` in [`README.md`](file:///C:/Users/gaura/CreatorFlow/README.md) with `https://github.com/Gauravkkaushal/CreatorFlow.git`.
+4. **Clean Project Root**: Moved internal development scratchpad `task.md` to [`.github/DEVELOPMENT.md`](./.github/DEVELOPMENT.md).
+5. **Accurate Documentation**: Replaced generic `<repo-url>` in [`README.md`](./README.md) with `https://github.com/Gauravkkaushal/CreatorFlow.git`.
 6. **Package Scripts**: Updated `"lint": "eslint"` in `package.json` to `"lint": "eslint ."` for ESLint 9 compatibility.
 
 ---

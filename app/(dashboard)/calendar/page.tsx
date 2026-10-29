@@ -161,6 +161,18 @@ export default function CalendarPage() {
     setSelectedEvent(null)
   }
 
+  const switchView = (v: 'month' | 'week') => {
+    if (v === view) return
+    if (v === 'week') {
+      const isViewingCurrentMonth = today !== null && today.getFullYear() === currentYear && today.getMonth() === currentMonth
+      setWeekAnchor(isViewingCurrentMonth ? today : new Date(currentYear, currentMonth, 1))
+    } else {
+      setCurrentYear(weekAnchor.getFullYear())
+      setCurrentMonth(weekAnchor.getMonth())
+    }
+    setView(v)
+  }
+
   const isToday = (date: Date) => today !== null && isSameDay(today, date)
   const calendarLabel = view === 'week'
     ? `${MONTHS[weekDays[0].getMonth()]} ${weekDays[0].getDate()} – ${MONTHS[weekDays[6].getMonth()]} ${weekDays[6].getDate()}, ${weekDays[6].getFullYear()}`
@@ -174,7 +186,7 @@ export default function CalendarPage() {
             {(['month', 'week'] as const).map((v) => (
               <button
                 key={v}
-                onClick={() => { setView(v); if (v === 'week') setWeekAnchor(today ?? new Date(currentYear, currentMonth, 1)) }}
+                onClick={() => switchView(v)}
                 className={`px-3 py-1.5 text-xs font-medium rounded-md capitalize transition-colors ${
                   view === v ? 'bg-violet-500 text-white shadow-lg shadow-violet-950/30' : 'text-slate-400 hover:text-white'
                 }`}
