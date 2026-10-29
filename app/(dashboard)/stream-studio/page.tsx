@@ -18,7 +18,12 @@ import {
   Calendar,
   Wand2,
 } from 'lucide-react'
-import { DEMO_BROADCASTS, DEMO_TOPICS } from '@/lib/demo-mode'
+import { DEMO_BROADCASTS, DEMO_TOPICS, isClientDemoMode } from '@/lib/demo-mode'
+import { EmptyState } from '@/components/dashboard/empty-state'
+
+const isDemo = isClientDemoMode()
+const broadcasts = isDemo ? DEMO_BROADCASTS : []
+const audienceTopics = isDemo ? DEMO_TOPICS : []
 import { formatDate } from '@/lib/utils'
 
 // ─── Pre-stream checklist ───────────────────────────────────────────────────
@@ -62,7 +67,7 @@ export default function StreamStudioPage() {
   }
 
   const applyTemplate = (template: typeof STREAM_TEMPLATES[number]) => {
-    const topic = streamTopic || DEMO_TOPICS[0]?.name || 'your topic'
+    const topic = streamTopic || audienceTopics[0]?.name || 'your topic'
     setStreamTopic(topic)
     setStreamTitle(template.title.replace('{Topic}', topic))
     setStreamDescription(template.description)
@@ -107,9 +112,11 @@ export default function StreamStudioPage() {
           <p className="text-sm text-slate-500 mt-1">Plan, prepare, and launch your live streams</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs font-medium text-amber-800">
-            <Info className="w-3.5 h-3.5" /> Demo Mode
-          </span>
+          {isDemo && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs font-medium text-amber-800">
+              <Info className="w-3.5 h-3.5" /> Demo Mode
+            </span>
+          )}
           <button
             onClick={() => setShowNewStream(true)}
             className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
@@ -124,7 +131,10 @@ export default function StreamStudioPage() {
         {/* Left column: Upcoming streams */}
         <div className="lg:col-span-2 space-y-4">
           <h2 className="text-base font-semibold text-white">Upcoming Live Streams</h2>
-          {DEMO_BROADCASTS.map((broadcast) => (
+          {broadcasts.length === 0 && (
+            <EmptyState icon={Radio} title="No live streams planned" description="Plan a stream to build its agenda, checklist and title ideas here." />
+          )}
+          {broadcasts.map((broadcast) => (
             <div key={broadcast._id} className="bg-[#151b2e] border border-white/8 rounded-2xl p-5 shadow-xl shadow-black/10 hover:border-violet-400/40 transition-all">
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
@@ -299,7 +309,7 @@ export default function StreamStudioPage() {
                 </div>
                 {/* From audience topics */}
                 <div className="flex flex-wrap gap-1.5 mt-2">
-                  {DEMO_TOPICS.map((t) => (
+                  {audienceTopics.map((t) => (
                     <button
                       key={t._id}
                       onClick={() => setStreamTopic(t.name)}

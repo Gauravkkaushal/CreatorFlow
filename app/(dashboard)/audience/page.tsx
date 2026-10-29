@@ -17,7 +17,8 @@ import {
   Info,
 } from 'lucide-react'
 import Link from 'next/link'
-import { DEMO_TOPICS, DEMO_VIDEOS } from '@/lib/demo-mode'
+import { DEMO_TOPICS, DEMO_VIDEOS, isClientDemoMode } from '@/lib/demo-mode'
+import { EmptyState } from '@/components/dashboard/empty-state'
 
 // ─── Mock sentiment data ───────────────────────────────────────────────────
 const SENTIMENT = { positive: 62, neutral: 24, negative: 14 }
@@ -56,6 +57,18 @@ export default function AudiencePage() {
   }
 
   const maxKeyword = KEYWORDS[0].count
+
+  if (!isClientDemoMode()) {
+    return (
+      <div className="mx-auto max-w-7xl space-y-7 animate-fade-in">
+        <div>
+          <p className="text-sm font-medium text-violet-300">Audience signals</p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-white">What your viewers want next.</h1>
+        </div>
+        <EmptyState icon={MessageSquare} title="No audience analysis yet" description="Comment analysis is coming next. Once your channel is synced, the topics, questions and keywords your viewers mention will appear here." href="/integrations" cta="Go to integrations" />
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto max-w-7xl space-y-7 animate-fade-in">

@@ -3,14 +3,50 @@ import Google from "next-auth/providers/google"
 import { MongoDBAdapter } from "@auth/mongodb-adapter"
 import clientPromise from "@/lib/mongodb-client"
 
-const isDemoMode = process.env.DEMO_MODE === 'true'
+const hasMongo = Boolean(process.env.MONGODB_URI)
+
+// Without these Google rejects sign-in with "Missing required parameter: client_id"
+if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+  console.error('[auth] GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are not set in .env — Google sign-in will fail.')
+}
+
+async function refreshAccessToken(token: Record<string, unknown>) {
+  try {
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: process.env.GOOGLE_CLIENT_ID || '',
+        client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+        grant_type: 'refresh_token',
+        refresh_token: token.refreshToken as string,
+      }),
+      method: 'POST',
+    })
+
+    const refreshedTokens = await response.json()
+    if (!response.ok) throw refreshedTokens
+
+    return {
+      ...token,
+      accessToken: refreshedTokens.access_token,
+      accessTokenExpires: Date.now() + (refreshedTokens.expires_in ?? 3600) * 1000,
+      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
+    }
+  } catch (error) {
+    console.error('Error refreshing Google access token:', error)
+    return {
+      ...token,
+      error: 'RefreshAccessTokenError',
+    }
+  }
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  ...(isDemoMode ? {} : { adapter: MongoDBAdapter(clientPromise) }),
+  ...(hasMongo ? { adapter: MongoDBAdapter(clientPromise) } : {}),
   providers: [
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
       authorization: {
         params: {
           scope: [
@@ -28,7 +64,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   session: {
-    strategy: isDemoMode ? 'jwt' : 'database',
+    strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
@@ -42,13 +78,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.userId = user.id
       }
+
+      if (!token.accessTokenExpires || Date.now() < (token.accessTokenExpires as number)) {
+        return token
+      }
+
+      if (token.refreshToken) {
+        return refreshAccessToken(token)
+      }
+
       return token
     },
     async session({ session, token }) {
       if (token) {
-        session.user.id = token.userId as string ?? token.sub as string
+        session.user.id = (token.userId as string) ?? (token.sub as string)
         session.user.googleId = token.googleId as string
-        // NOTE: never expose raw tokens to client; they stay server-side only
+        session.accessToken = token.accessToken as string
+        session.error = token.error as string | undefined
       }
       return session
     },

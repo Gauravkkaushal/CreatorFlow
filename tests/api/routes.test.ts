@@ -182,3 +182,55 @@ describe('GET /api/calendar', () => {
     expect(res.status).toBeLessThan(500)
   })
 })
+
+// ─── /api/videos (GET) ───────────────────────────────────────────────────────
+jest.mock('@/services/youtube', () => ({
+  ...jest.requireActual('@/services/youtube'),
+  getMyVideos: jest.fn(async () => [{ id: 'v1', title: 'My video' }]),
+}))
+
+describe('GET /api/videos', () => {
+  const live = () => {
+    const { isDemoMode } = require('@/lib/demo-mode') as { isDemoMode: jest.Mock }
+    isDemoMode.mockReturnValueOnce(false)
+  }
+  const { auth } = require('@/lib/auth') as { auth: jest.Mock }
+  const { getMyVideos } = require('@/services/youtube') as { getMyVideos: jest.Mock }
+
+  beforeEach(() => getMyVideos.mockClear())
+
+  it('returns videos in demo mode', async () => {
+    auth.mockResolvedValue(null)
+    const { GET } = await import('@/app/api/videos/route')
+    const res = await GET(mockRequest('GET', 'http://localhost/api/videos') as never)
+    expect(res.status).toBe(200)
+    expect((await res.json()).data).toHaveLength(1)
+  })
+
+  it('returns 401 in live mode when unauthenticated', async () => {
+    live()
+    auth.mockResolvedValue(null)
+    const { GET } = await import('@/app/api/videos/route')
+    const res = await GET(mockRequest('GET', 'http://localhost/api/videos') as never)
+    expect(res.status).toBe(401)
+    expect(getMyVideos).not.toHaveBeenCalled()
+  })
+
+  it('returns 401 when the Google token refresh failed', async () => {
+    live()
+    auth.mockResolvedValue({ user: { id: 'u1' }, accessToken: 'stale', error: 'RefreshAccessTokenError' })
+    const { GET } = await import('@/app/api/videos/route')
+    const res = await GET(mockRequest('GET', 'http://localhost/api/videos') as never)
+    expect(res.status).toBe(401)
+    expect((await res.json()).error).toMatch(/sign in again/i)
+  })
+
+  it('fetches with the user token and clamps maxResults to 50', async () => {
+    live()
+    auth.mockResolvedValue({ user: { id: 'u1' }, accessToken: 'tok' })
+    const { GET } = await import('@/app/api/videos/route')
+    const res = await GET(mockRequest('GET', 'http://localhost/api/videos?maxResults=999') as never)
+    expect(res.status).toBe(200)
+    expect(getMyVideos).toHaveBeenCalledWith('tok', 50)
+  })
+})
