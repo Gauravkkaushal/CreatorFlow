@@ -13,6 +13,19 @@ const AudienceTopicSchema = new Schema({
   commentIds: [{ type: String }],
 })
 
+export interface IAudienceTopic {
+  name: string
+  summary: string
+  commentCount: number
+  representativeComments: string[]
+  commonQuestions: string[]
+  painPoints: string[]
+  suggestedIdeas: string[]
+  priorityScore: number
+  scoreExplanation?: string
+  commentIds: string[]
+}
+
 export interface IAudienceAnalysis extends Document {
   userId: mongoose.Types.ObjectId
   channelId: string
@@ -21,7 +34,7 @@ export interface IAudienceAnalysis extends Document {
   status: 'pending' | 'processing' | 'completed' | 'failed'
   commentsAnalyzed: number
   totalComments: number
-  topics: typeof AudienceTopicSchema[]
+  topics: IAudienceTopic[]
   error?: string
   startedAt?: Date
   completedAt?: Date

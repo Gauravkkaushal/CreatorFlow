@@ -271,7 +271,8 @@ class YouTubeLiveAdapter {
 
   async getVideoComments(
     videoId: string,
-    options: FetchCommentsOptions = {}
+    options: FetchCommentsOptions = {},
+    token?: string
   ): Promise<{ comments: YouTubeComment[]; nextPageToken?: string }> {
     const { maxResults = 100, pageToken, order = 'relevance' } = options
     const params: Record<string, string | number> = {
@@ -302,7 +303,7 @@ class YouTubeLiveAdapter {
         }
       }>
       nextPageToken?: string
-    }>('/commentThreads', params)
+    }>('/commentThreads', params, token)
 
     const comments: YouTubeComment[] = data.items.map((item) => {
       const s = item.snippet.topLevelComment.snippet
@@ -365,6 +366,20 @@ export const getMyChannel = async (accessToken?: string): Promise<ChannelInfo | 
   if (!accessToken) return null
   const adapter = new YouTubeLiveAdapter(process.env.YOUTUBE_API_KEY)
   return adapter.getMyChannel(accessToken)
+}
+
+/** Top comments on one of the signed-in user's videos; [] when the video has comments turned off. */
+export const getMyVideoComments = async (accessToken: string, videoId: string, maxResults = 50): Promise<YouTubeComment[]> => {
+  if (isDemoMode()) {
+    return (await new YouTubeDemoAdapter().getVideoComments(videoId, { maxResults })).comments
+  }
+  try {
+    const { comments } = await new YouTubeLiveAdapter(process.env.YOUTUBE_API_KEY).getVideoComments(videoId, { maxResults }, accessToken)
+    return comments
+  } catch (err) {
+    if (String(err).includes('commentsDisabled')) return []
+    throw err
+  }
 }
 
 export const getMyVideos = async (accessToken?: string, maxResults?: number): Promise<YouTubeVideo[]> => {

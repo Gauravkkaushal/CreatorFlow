@@ -187,7 +187,85 @@ describe('GET /api/calendar', () => {
 jest.mock('@/services/youtube', () => ({
   ...jest.requireActual('@/services/youtube'),
   getMyVideos: jest.fn(async () => [{ id: 'v1', title: 'My video' }]),
+  getMyChannel: jest.fn(async () => ({ channelId: 'UCme', channelTitle: 'Me' })),
+  getMyVideoComments: jest.fn(async () => [{ id: 'c1', text: 'More on hooks please', likeCount: 3, publishedAt: '2026-10-01T00:00:00Z' }]),
 }))
+jest.mock('@/services/ai', () => ({
+  analyzeComments: jest.fn(async () => ({ topics: [{ name: 'React hooks' }], totalCommentsAnalyzed: 1 })),
+}))
+jest.mock('@/lib/mongodb', () => ({ __esModule: true, default: jest.fn(async () => ({})) }))
+jest.mock('@/models/AudienceAnalysis', () => ({ __esModule: true, default: { create: jest.fn(async () => ({})) } }))
+
+describe('POST /api/channel/sync (analysis)', () => {
+  const USER_ID = '64b7f0c2a1b2c3d4e5f60718'
+  const live = () => {
+    const { isDemoMode } = require('@/lib/demo-mode') as { isDemoMode: jest.Mock }
+    isDemoMode.mockReturnValueOnce(false)
+  }
+  const { auth } = require('@/lib/auth') as { auth: jest.Mock }
+  const { getMyVideoComments } = require('@/services/youtube') as { getMyVideoComments: jest.Mock }
+  const { analyzeComments } = require('@/services/ai') as { analyzeComments: jest.Mock }
+  const AudienceAnalysis = require('@/models/AudienceAnalysis').default as { create: jest.Mock }
+
+  beforeEach(() => {
+    analyzeComments.mockClear()
+    AudienceAnalysis.create.mockClear()
+    process.env.MONGODB_URI = 'mongodb://test'
+    process.env.GEMINI_API_KEY = 'test-key'
+  })
+  afterAll(() => {
+    delete process.env.MONGODB_URI
+    delete process.env.GEMINI_API_KEY
+  })
+
+  it('names the missing setting when MONGODB_URI is empty', async () => {
+    live()
+    delete process.env.MONGODB_URI
+    auth.mockResolvedValue({ user: { id: USER_ID }, accessToken: 'tok' })
+    const { POST } = await import('@/app/api/channel/sync/route')
+    const res = await POST()
+    expect((await res.json()).error).toMatch(/MONGODB_URI is empty/)
+    expect(analyzeComments).not.toHaveBeenCalled()
+  })
+
+  it('returns a demo result without touching AI or the database in demo mode', async () => {
+    auth.mockResolvedValue({ user: { id: 'u1' } })
+    const { POST } = await import('@/app/api/channel/sync/route')
+    const res = await POST()
+    expect(res.status).toBe(200)
+    expect((await res.json()).data.isDemo).toBe(true)
+    expect(analyzeComments).not.toHaveBeenCalled()
+  })
+
+  it('returns 401 when the Google token refresh failed', async () => {
+    live()
+    auth.mockResolvedValue({ user: { id: USER_ID }, accessToken: 'stale', error: 'RefreshAccessTokenError' })
+    const { POST } = await import('@/app/api/channel/sync/route')
+    expect((await POST()).status).toBe(401)
+  })
+
+  it('returns 422 and saves nothing when the videos have no comments', async () => {
+    live()
+    auth.mockResolvedValue({ user: { id: USER_ID }, accessToken: 'tok' })
+    getMyVideoComments.mockResolvedValueOnce([])
+    const { POST } = await import('@/app/api/channel/sync/route')
+    expect((await POST()).status).toBe(422)
+    expect(analyzeComments).not.toHaveBeenCalled()
+    expect(AudienceAnalysis.create).not.toHaveBeenCalled()
+  })
+
+  it('analyzes comments and saves the analysis for the user', async () => {
+    live()
+    auth.mockResolvedValue({ user: { id: USER_ID }, accessToken: 'tok' })
+    const { POST } = await import('@/app/api/channel/sync/route')
+    const res = await POST()
+    expect(res.status).toBe(200)
+    expect((await res.json()).data.topicsFound).toBe(1)
+    expect(AudienceAnalysis.create).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: USER_ID, channelId: 'UCme', status: 'completed', totalComments: 1 })
+    )
+  })
+})
 
 describe('GET /api/videos', () => {
   const live = () => {
